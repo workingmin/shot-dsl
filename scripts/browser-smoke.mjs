@@ -126,13 +126,29 @@ const run = async () => {
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
 
+  await evaluate(`document.querySelector('[data-id="face-impact"]').click()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'face_punch_closeup'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'face_impact'`)
+  const impactState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  const impactFrame = impactState.activeCameraFrame
+  const punchSample = impactState.characterSamples?.find(sample => sample.actorId === 'boxer')?.actions.find(action => action.asset === 'Punch_Jab')
+  if (impactState.skinnedActors !== 2 || impactState.humanActors !== 2 || impactState.fallbackActors !== 0 || impactFrame?.mode !== 'impact' || impactFrame?.boneTargetsResolved !== 2 || impactFrame?.contactDistance > 0.2 || Math.abs((punchSample?.time ?? -1) - 0.292) > 0.002) {
+    throw new Error(`Impact close-up assertion failed: ${JSON.stringify(impactState)}`)
+  }
+  const firstImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1000'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  const repeatedImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
+  if (repeatedImpactFrame !== firstImpactFrame) throw new Error('Repeated impact-camera seek produced different pixels')
+
   await evaluate(`(() => { const input = document.querySelector('#dsl-input'); input.value = 'shotdsl 0.1\\nscene broken {\\n duration 5\\n}'; input.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`document.querySelector('#status')?.dataset.state === 'error'`)
   const errorCount = await evaluate(`document.querySelectorAll('.diagnostic').length`)
   if (errorCount < 2) throw new Error(`Expected compiler diagnostics, received ${errorCount}`)
 
   if (process.env.SCREENSHOT_PATH) {
-    await evaluate(`document.querySelector('[data-id="duel"]').click()`)
+    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? 'duel'
+    await evaluate(`document.querySelector(${JSON.stringify(`[data-id="${screenshotExample}"]`)}).click()`)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
     if (process.env.SCREENSHOT_TIME) {
       const screenshotTime = Number(process.env.SCREENSHOT_TIME)
@@ -143,7 +159,7 @@ const run = async () => {
     await writeFile(process.env.SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
   }
 
-  const result = { initial, playbackTime: Math.round(playbackTime), seekState, pngLength, compilerErrors: errorCount, diagnostics }
+  const result = { initial, playbackTime: Math.round(playbackTime), seekState, impactState, pngLength, compilerErrors: errorCount, diagnostics }
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
   socket.close()
   if (diagnostics.length) process.exitCode = 1

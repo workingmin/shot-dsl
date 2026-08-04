@@ -69,6 +69,65 @@ timeline {
 }`
   },
   {
+    id: 'face-impact',
+    label: '拳击脸部特写',
+    source: `shotdsl 0.1
+
+scene face_punch_closeup {
+  duration 3s
+  fps 24
+  seed 3108
+  style rough-ink
+}
+
+actor boxer {
+  model "human-mannequin"
+  color ivory
+  position [-0.4m, 0m, 0m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor opponent {
+  model "human-mannequin"
+  color tan
+  position [0.35m, 0m, 0m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+camera two_shot {
+  mode lookAt
+  fov 40deg
+  position [0m, 2m, 5.8m]
+  target point [0m, 1.1m, 0m]
+}
+
+camera face_impact {
+  mode impact
+  fov 32deg
+  attacker actor boxer bone "hand_l"
+  victim actor opponent bone "head"
+  distance 1.45m
+  side right
+  focus 0.72
+}
+
+timeline {
+  cut 0s camera two_shot
+  play 0s actor boxer clip "guard" loop true
+  play 0s actor opponent clip "guard" loop true
+  play 0.8s actor boxer clip "punch" loop false blend 0.12s
+  key 0.95s boxer.position [-0.4m, 0m, 0m]
+  key 0.96s boxer.position [-0.4m, 0.14m, 0m] ease hold
+  cut 0.96s camera face_impact
+  play 1.05s actor opponent clip "hit-face" loop false blend 0.05s
+  key 1.41s boxer.position [-0.4m, 0.14m, 0m] ease hold
+  key 1.42s boxer.position [-0.4m, 0m, 0m] ease hold
+  cut 1.42s camera two_shot
+  play 1.48s actor boxer clip "guard" loop true blend 0.15s
+  play 1.58s actor opponent clip "fall" loop false blend 0.1s
+}`
+  },
+  {
     id: 'brawl',
     label: '三人混战',
     source: `shotdsl 0.1

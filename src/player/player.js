@@ -62,6 +62,7 @@ export class ShotPlayer {
     this.cameras = new Map()
     this.ir = null
     this.activeCamera = null
+    this.cameraDebug = null
     this.currentTimeMs = 0
     this.onCameraChange = null
     this.loadGeneration = 0
@@ -225,14 +226,22 @@ export class ShotPlayer {
     else if (property === 'visibility') runtime.object.visible = value
   }
 
-  targetPoint(target) {
-    if (!target) return new THREE.Vector3(0, 1, 0)
-    if (target.kind === 'point') return new THREE.Vector3().fromArray(target.point)
+  resolveTargetPoint(target) {
+    if (!target) return { point: new THREE.Vector3(0, 1, 0), boneResolved: false }
+    if (target.kind === 'point') return { point: new THREE.Vector3().fromArray(target.point), boneResolved: false }
     const runtime = this.runtime.get(target.entityId)
-    if (!runtime) return new THREE.Vector3(0, 1, 0)
+    if (!runtime) return { point: new THREE.Vector3(0, 1, 0), boneResolved: false }
+    if (target.bone && runtime.character) {
+      const bone = runtime.character.model.getObjectByName(target.bone)
+      if (bone) return { point: bone.getWorldPosition(new THREE.Vector3()), boneResolved: true }
+    }
     const point = runtime.object.getWorldPosition(new THREE.Vector3())
     if (runtime.entity.kind === 'actor') point.y += target.bone === 'head' ? 1.72 : 1.05
-    return point
+    return { point, boneResolved: false }
+  }
+
+  targetPoint(target) {
+    return this.resolveTargetPoint(target).point
   }
 
   resolveCamera(id) {
@@ -243,8 +252,37 @@ export class ShotPlayer {
     camera.near = 0.03
     camera.updateProjectionMatrix()
     const target = this.targetPoint(state.target)
+    this.cameraDebug = { mode: state.mode, cameraId: id, boneTargetsResolved: 0 }
 
-    if (state.mode === 'follow') {
+    if (state.mode === 'impact') {
+      const attacker = this.resolveTargetPoint(state.attacker)
+      const victim = this.resolveTargetPoint(state.victim)
+      const attackerRoot = this.runtime.get(state.attacker?.entityId)?.object.getWorldPosition(new THREE.Vector3()) ?? attacker.point.clone()
+      const victimRoot = this.runtime.get(state.victim?.entityId)?.object.getWorldPosition(new THREE.Vector3()) ?? victim.point.clone()
+      const attackAxis = victimRoot.sub(attackerRoot)
+      attackAxis.y = 0
+      if (attackAxis.lengthSq() < 0.0001) attackAxis.set(1, 0, 0)
+      else attackAxis.normalize()
+      const up = new THREE.Vector3(0, 1, 0)
+      const side = new THREE.Vector3().crossVectors(attackAxis, up).normalize()
+      if (state.side === 'left') side.negate()
+      const focus = attacker.point.clone().lerp(victim.point, state.focus)
+      camera.position.copy(focus)
+        .addScaledVector(side, state.distance)
+        .addScaledVector(up, state.distance * 0.1)
+        .addScaledVector(attackAxis, -state.distance * 0.2)
+        .add(new THREE.Vector3().fromArray(state.offset))
+      camera.lookAt(focus)
+      this.cameraDebug = {
+        mode: state.mode,
+        cameraId: id,
+        boneTargetsResolved: Number(attacker.boneResolved) + Number(victim.boneResolved),
+        attackerPoint: attacker.point.toArray(),
+        victimPoint: victim.point.toArray(),
+        contactDistance: attacker.point.distanceTo(victim.point),
+        focusPoint: focus.toArray()
+      }
+    } else if (state.mode === 'follow') {
       camera.position.copy(target).add(new THREE.Vector3().fromArray(state.offset))
       camera.lookAt(target)
     } else if (state.mode === 'orbit') {
@@ -321,6 +359,7 @@ export class ShotPlayer {
       characterModels: [...new Set(characters.map(runtime => runtime.character.metrics.modelId))].sort(),
       characterMetrics: characters.map(runtime => ({ actorId: runtime.entity.id, ...runtime.character.metrics })),
       characterSamples: characters.map(runtime => ({ actorId: runtime.entity.id, actions: runtime.character.lastSample ?? [] })),
+      activeCameraFrame: this.cameraDebug,
       fallbackActors: [...this.runtime.values()].filter(runtime => runtime.rig).length
     }
   }

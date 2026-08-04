@@ -7,12 +7,12 @@
 `main` 已具备可运行的第一版 Web MVP，覆盖推荐实施顺序的第 1～5 项：
 
 - ShotDSL v0.1 行式 Parser、语义校验、带行号诊断和 Scene IR；
-- Three.js 低模场景、glTF 骨骼人物和四种相机模式；
+- Three.js 低模场景、glTF 骨骼人物和五种相机模式；
 - 绝对时间轴求值、linear/smoothstep/hold、quaternion slerp 和 camera cut；
 - AnimationMixer 绝对时间采样、动作 crossfade 和多人物独立骨架；
 - 适配蒙皮人物的 OutlineEffect 与静态几何双描边 NPR 风格；
 - 播放、暂停、回到开头、时间轴拖拽和 PNG 当前帧导出；
-- 双人巷战、三人混战、跟拍追逐和环绕建立镜头四个快捷示例。
+- 双人巷战、拳击脸部特写、三人混战、跟拍追逐和环绕建立镜头五个快捷示例。
 
 已完成的静态线稿原型归档在远端分支：
 
@@ -31,6 +31,7 @@ prototype/storyboarder-sts
 - 双人和三人场景的骨架、动作时间及混合状态彼此独立；
 - 任意拖拽时间轴可重复得到相同姿势，资产加载失败必须显示 fallback 状态；
 - 近景使用较长焦段，避免广角透视再次放大头部和上身。
+- 击打特写必须解析真实拳头/头部骨骼，命中峰值的两骨骼距离进入浏览器回归检查。
 
 默认 `human-mannequin` 来自 Mesh2Motion/Quaternius 的 CC0 humanoid 资产，内置 9 个经过裁剪/重定向的动作 Clip。运行时将模型统一归一为 1.78 米、脚底对齐地面，并为每个 actor 克隆独立骨架。`robot-expressive` 继续保留为开发备用资产，但不再用于快捷演示。
 

@@ -21,6 +21,14 @@ export const CHARACTER_CATALOG = {
       kick: 'Melee_Hook',
       'hit-face': 'Hit_Head',
       fall: 'Death_D'
+    },
+    contacts: {
+      punch: {
+        impactTimeMs: 292,
+        effectorBone: 'hand_l',
+        targetBone: 'head',
+        responseClip: 'hit-face'
+      }
     }
   },
   'robot-expressive': {

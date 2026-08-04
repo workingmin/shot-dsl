@@ -200,6 +200,27 @@ azimuth 30deg
 elevation 15deg
 ```
 
+### impact
+
+`impact` 用于双人物击打特写。相机逐帧读取出拳骨骼和受击骨骼的世界坐标，以二者的加权点为焦点，并根据攻击方向建立稳定的侧面机位：
+
+```text
+mode impact
+attacker actor boxer bone "hand_l"
+victim actor opponent bone "head"
+fov 32deg
+distance 1.45m
+side right
+focus 0.72
+```
+
+- `attacker`、`victim` 必须引用 actor 的实际骨骼；
+- `distance` 是相机到接触焦点的构图距离；
+- `side` 为 `left` 或 `right`，决定攻击轴的观察侧；
+- `focus` 取 0～1，0 完全偏向拳头，1 完全偏向受击骨骼；
+- 动作目录可声明 `impactTimeMs`、`effectorBone`、`targetBone` 和 `responseClip`，示例按命中峰值安排 `cut` 与受击动作；
+- 在尚未接入手臂 IK 时，可以只在特写切入区间用 actor position 的 `hold` 关键帧做小幅接触校准，切回全景时恢复地面位置。
+
 ## Scene IR 示例
 
 Parser 和 Semantic Compiler 输出规范化 JSON，不保留语言层简写：

@@ -10,6 +10,12 @@ test('default character asset maps every ShotDSL semantic clip', () => {
   assert.ok(character.url.endsWith('HumanMannequin.glb'))
   assert.equal(character.proportion, 'human-realistic')
   assert.deepEqual(new Set(Object.keys(character.clips)), SUPPORTED_CLIPS)
+  assert.deepEqual(character.contacts.punch, {
+    impactTimeMs: 292,
+    effectorBone: 'hand_l',
+    targetBone: 'head',
+    responseClip: 'hit-face'
+  })
 })
 
 test('vendored CC0 human character asset matches its pinned checksum', async () => {

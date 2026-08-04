@@ -235,6 +235,7 @@ window.__SHOT_DSL_APP__ = {
       characterModels: stats.characterModels ?? [],
       characterMetrics: stats.characterMetrics ?? [],
       characterSamples: stats.characterSamples ?? [],
+      activeCameraFrame: stats.activeCameraFrame ?? null,
       fallbackActors: stats.fallbackActors ?? 0
     }
   }

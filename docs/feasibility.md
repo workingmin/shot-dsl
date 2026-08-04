@@ -24,7 +24,7 @@ Rough.js 可以在两个场景中继续试验：
 
 ## 已验证实现
 
-v0.4 已完成真人比例多人 glTF 骨骼人物演示：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
+v0.5 已完成真人比例多人 glTF 骨骼人物和击打特写演示：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；`impact` 相机逐帧读取拳头与头部骨骼的世界坐标并自动构图；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
 
 当前默认 `human-mannequin` 提供约 7～8 头身、统一 humanoid 骨架以及走、跑、搏击架势、拳击、受击和倒地动作；`robot-expressive` 仅保留为开发备用资产。进入下一阶段仍需补齐真实踢击与格挡受力动作、脚底/手部接触 IK，并建立动作接触点的视觉回归。
 
@@ -92,6 +92,7 @@ Parser 与 Timeline Engine 应能在无 DOM、无 WebGL 环境下运行和测试
 - `lookAt`: 相机位置可动画，朝向持续对准 point/entity/bone；
 - `follow`: 跟随实体并应用局部 offset；
 - `orbit`: 以 target、radius、azimuth、elevation 求相机 transform。
+- `impact`: 以攻击者和受击者两个 actor bone 为目标，根据攻击轴、观察侧和距离生成击打特写。
 
 相机模式切换属于离散事件。相机 `cut` 不应通过超短 lerp 模拟。
 
@@ -138,7 +139,7 @@ LLM 只做“自然语言 → ShotDSL”翻译：
 
 - actor、primitive object、camera、light、ground；
 - position、rotation、scale、visibility 关键帧；
-- fixed/lookAt/follow/orbit 相机；
+- fixed/lookAt/follow/orbit/impact 相机；
 - linear/smoothstep/hold 与 camera cut；
 - glTF 单角色动作 clip 播放；
 - 播放、暂停、时间轴拖拽；

@@ -185,24 +185,39 @@ const parseEntity = (block, diagnostics) => {
       mode: parseIdentifier,
       fov: parseAngle,
       target: parseTarget,
+      attacker: parseTarget,
+      victim: parseTarget,
       offset: parseLengthVector,
       radius: parseLength,
+      distance: parseLength,
       azimuth: parseAngle,
-      elevation: parseAngle
+      elevation: parseAngle,
+      side: parseIdentifier,
+      focus: parseNumber
     }, diagnostics)
     const mode = fields.mode ?? 'lookAt'
-    if (!['fixed', 'lookAt', 'follow', 'orbit'].includes(mode)) diagnostics.push(diagnostic('E_CAMERA_MODE', `Unsupported camera mode '${mode}'`, block.line))
+    if (!['fixed', 'lookAt', 'follow', 'orbit', 'impact'].includes(mode)) diagnostics.push(diagnostic('E_CAMERA_MODE', `Unsupported camera mode '${mode}'`, block.line))
     if (['lookAt', 'follow', 'orbit'].includes(mode) && !fields.target) diagnostics.push(diagnostic('E_CAMERA_TARGET', `Camera '${block.id}' mode ${mode} requires target`, block.line))
+    if (mode === 'impact' && (!fields.attacker || !fields.victim)) diagnostics.push(diagnostic('E_CAMERA_IMPACT_TARGETS', `Camera '${block.id}' mode impact requires attacker and victim`, block.line))
+    if (mode === 'impact' && [fields.attacker, fields.victim].some(target => target && (target.entityKind !== 'actor' || !target.bone))) diagnostics.push(diagnostic('E_CAMERA_IMPACT_BONE', `Camera '${block.id}' impact targets must be actor bones`, block.line))
+    if (fields.side && !['left', 'right'].includes(fields.side)) diagnostics.push(diagnostic('E_CAMERA_SIDE', `Camera '${block.id}' side must be left or right`, block.line))
+    if (fields.distance !== undefined && fields.distance <= 0) diagnostics.push(diagnostic('E_CAMERA_DISTANCE', `Camera '${block.id}' distance must be greater than zero`, block.line))
+    if (fields.focus !== undefined && (fields.focus < 0 || fields.focus > 1)) diagnostics.push(diagnostic('E_CAMERA_FOCUS', `Camera '${block.id}' focus must be between 0 and 1`, block.line))
     return {
       id: block.id,
       kind: 'camera',
       mode,
       fov: fields.fov ?? 45 * Math.PI / 180,
       target: fields.target ?? null,
-      offset: fields.offset ?? [0, 1.5, 5],
+      attacker: fields.attacker ?? null,
+      victim: fields.victim ?? null,
+      offset: fields.offset ?? (mode === 'impact' ? [0, 0, 0] : [0, 1.5, 5]),
       radius: fields.radius ?? 5,
+      distance: fields.distance ?? 1.6,
       azimuth: fields.azimuth ?? 0,
       elevation: fields.elevation ?? 15 * Math.PI / 180,
+      side: fields.side ?? 'right',
+      focus: fields.focus ?? 0.68,
       transform: transformFrom(fields)
     }
   }
@@ -317,9 +332,12 @@ const compileTimeline = (blocks, scene, entities, diagnostics) => {
 
 const validateReferences = (entities, diagnostics) => {
   for (const entity of Object.values(entities)) {
-    const target = entity.target
-    if (target?.kind === 'entity' && !entities[target.entityId]) {
-      diagnostics.push(diagnostic('E_UNKNOWN_TARGET', `${entity.kind} '${entity.id}' targets unknown entity '${target.entityId}'`, 1))
+    for (const target of [entity.target, entity.attacker, entity.victim]) {
+      if (target?.kind === 'entity' && !entities[target.entityId]) {
+        diagnostics.push(diagnostic('E_UNKNOWN_TARGET', `${entity.kind} '${entity.id}' targets unknown entity '${target.entityId}'`, 1))
+      } else if (target?.kind === 'entity' && entities[target.entityId].kind !== target.entityKind) {
+        diagnostics.push(diagnostic('E_TARGET_KIND', `${entity.kind} '${entity.id}' expects ${target.entityKind} '${target.entityId}', received ${entities[target.entityId].kind}`, 1))
+      }
     }
   }
 }

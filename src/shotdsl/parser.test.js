@@ -57,3 +57,26 @@ test('semantic compiler rejects properties on the wrong entity kind', () => {
   assert.equal(result.ok, false)
   assert.ok(result.diagnostics.some(item => item.code === 'E_PROPERTY_KIND'))
 })
+
+test('impact camera compiles two actor bone targets into Scene IR', () => {
+  const example = EXAMPLES.find(item => item.id === 'face-impact')
+  const result = compileShotDSL(example.source)
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
+  const camera = result.ir.entities.face_impact
+  assert.equal(camera.mode, 'impact')
+  assert.deepEqual(camera.attacker, { kind: 'entity', entityKind: 'actor', entityId: 'boxer', bone: 'hand_l' })
+  assert.deepEqual(camera.victim, { kind: 'entity', entityKind: 'actor', entityId: 'opponent', bone: 'head' })
+  assert.equal(camera.distance, 1.45)
+  assert.equal(camera.side, 'right')
+  assert.equal(camera.focus, 0.72)
+})
+
+test('impact camera requires two actor bone targets', () => {
+  const source = EXAMPLES.find(item => item.id === 'face-impact').source.replace(
+    '  victim actor opponent bone "head"\n',
+    ''
+  )
+  const result = compileShotDSL(source)
+  assert.equal(result.ok, false)
+  assert.ok(result.diagnostics.some(item => item.code === 'E_CAMERA_IMPACT_TARGETS'))
+})
