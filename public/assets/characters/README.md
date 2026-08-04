@@ -8,8 +8,8 @@
 - Upstream: https://github.com/Mesh2Motion/mesh2motion-app/tree/64c39b975b3d1ce1d367062bf52290d247afa0b5/static/animations
 - Upstream SHA-256: `406eb0a8dc4ab366e623b79b6e3005a4951392e1bda78ae39c1099d31147733c`
 - Addon SHA-256: `a0d64d555e0d492026b72d58bf8e16c5e86779295f9093e376dcc001915c2c95`
-- Local SHA-256: `708de47790222029bb83c54c06b8573bb0eab0a95cf75139ea56542643000648`
-- Local modification: retained `Idle_A`, `Walk`, `Sprint`, `Punch_Jab`, `Punch_Cross`, `Melee_Hook`, `Hit_Head`, and `Death_D`, then retargeted `Fighting Idle` onto the identical humanoid skeleton with glTF-Transform 4.4.2.
+- Local SHA-256: `fdcd24b5006f04dcbbf4e974f2d7257d04fa122261ac0b14990c3625f1a63ff1`
+- Local modification: retained the original movement/combat clips, then retargeted `Fighting Idle`, `Chest_Open`, `Dance_Simple`, `Crouch_Idle`, `Jumping Jacks`, `Dance Reach Hip`, `Pushup`, and `Idle_Subtle` onto the identical humanoid skeleton with glTF-Transform 4.4.2.
 
 This is the default prototype character. It provides human proportions, a
 standard humanoid skeleton, and deterministic local animation loading.

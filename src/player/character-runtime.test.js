@@ -21,5 +21,5 @@ test('default character asset maps every ShotDSL semantic clip', () => {
 test('vendored CC0 human character asset matches its pinned checksum', async () => {
   const asset = await readFile(new URL('../../public/assets/characters/HumanMannequin.glb', import.meta.url))
   const checksum = createHash('sha256').update(asset).digest('hex')
-  assert.equal(checksum, '708de47790222029bb83c54c06b8573bb0eab0a95cf75139ea56542643000648')
+  assert.equal(checksum, 'fdcd24b5006f04dcbbf4e974f2d7257d04fa122261ac0b14990c3625f1a63ff1')
 })

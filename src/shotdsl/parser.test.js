@@ -80,3 +80,14 @@ test('impact camera requires two actor bone targets', () => {
   assert.equal(result.ok, false)
   assert.ok(result.diagnostics.some(item => item.code === 'E_CAMERA_IMPACT_TARGETS'))
 })
+
+test('long calisthenics example compiles a six-minute multi-section timeline', () => {
+  const example = EXAMPLES.find(item => item.id === 'calisthenics-long')
+  const result = compileShotDSL(example.source)
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
+  assert.equal(result.ir.scene.durationMs, 390000)
+  assert.equal(Object.values(result.ir.entities).filter(entity => entity.kind === 'actor').length, 5)
+  assert.equal(result.ir.events.filter(event => event.type === 'playClip').length, 45)
+  assert.ok(result.ir.events.some(event => event.timeMs === 285000 && event.type === 'playClip' && event.clip === 'pushup'))
+  assert.ok(result.ir.events.some(event => event.timeMs === 365000 && event.type === 'playClip' && event.clip === 'cooldown'))
+})

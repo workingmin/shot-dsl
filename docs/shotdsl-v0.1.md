@@ -141,7 +141,9 @@ clip 必须存在于资产目录。缺失 clip 是编译错误或显式 warning�
 
 DSL 使用语义 Clip 名称，资产目录负责把它映射到具体 glTF Animation Clip。例如 `punch` 可以映射为资产中的 `Punch_Jab`，因此更换角色资产时不需要修改时间轴。`blend` 表示新动作开始后与前一动作交叉混合的时长；任意 seek 时也必须由绝对时间重新计算相同权重。
 
-当前内置语义为 `idle`、`guard`、`walk`、`run`、`punch`、`cross`、`hook`、`kick`、`hit-face`、`fall`。默认真人模型为前九者中的非踢击动作提供独立 Clip；`kick` 仅作为 v0.1 兼容名称保留，在补齐真实踢击资产前不用于演示样例。
+当前内置语义为 `idle`、`guard`、`walk`、`march`、`run`、`stretch`、`dance`、`side-step`、`jumping-jacks`、`crouch`、`pushup`、`cooldown`、`punch`、`cross`、`hook`、`kick`、`hit-face`、`fall`。默认真人模型除兼容名称 `kick` 外均提供匹配或明确复用的 Clip；`kick` 在补齐真实踢击资产前不用于演示样例。
+
+scene duration 可以使用分钟级等价秒数，例如 `duration 390s`。时间轴和播放器均采用绝对毫秒求值，长节目不需要从 0 秒累计播放才能 seek 到后续分节。
 
 ## 类型与单位
 

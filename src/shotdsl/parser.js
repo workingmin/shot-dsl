@@ -14,7 +14,11 @@ import {
 } from './values.js'
 
 const SUPPORTED_VERSION = '0.1'
-export const SUPPORTED_CLIPS = new Set(['idle', 'guard', 'walk', 'run', 'punch', 'cross', 'hook', 'kick', 'hit-face', 'fall'])
+export const SUPPORTED_CLIPS = new Set([
+  'idle', 'guard', 'walk', 'march', 'run', 'stretch', 'dance', 'side-step',
+  'jumping-jacks', 'crouch', 'pushup', 'cooldown',
+  'punch', 'cross', 'hook', 'kick', 'hit-face', 'fall'
+])
 
 const diagnostic = (code, message, line, column = 1, severity = 'error') => ({
   code,

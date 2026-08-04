@@ -1,3 +1,135 @@
+const EXERCISE_ACTORS = ['instructor', 'left_front', 'right_front', 'left_back', 'right_back']
+
+const playExerciseGroup = (time, clip, speed = 1) => EXERCISE_ACTORS
+  .map(actorId => `  play ${time} actor ${actorId} clip "${clip}" loop true speed ${speed} blend 0.25s`)
+  .join('\n')
+
+const CALISTHENICS_SOURCE = `shotdsl 0.1
+
+scene broadcast_calisthenics_390s {
+  duration 390s
+  fps 24
+  seed 20260804
+  style rough-ink
+}
+
+actor instructor {
+  model "human-mannequin"
+  color ivory
+  position [0m, 0m, 0.6m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor left_front {
+  model "human-mannequin"
+  color tan
+  position [-1.8m, 0m, 0m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor right_front {
+  model "human-mannequin"
+  color lightgray
+  position [1.8m, 0m, 0m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor left_back {
+  model "human-mannequin"
+  color wheat
+  position [-0.95m, 0m, -1.7m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor right_back {
+  model "human-mannequin"
+  color silver
+  position [0.95m, 0m, -1.7m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+object stage {
+  primitive box
+  size [8m, 0.08m, 6m]
+  color lightgray
+  position [0m, -0.04m, -0.6m]
+}
+
+camera master {
+  mode lookAt
+  fov 38deg
+  position [0m, 4.2m, 11.5m]
+  target point [0m, 1m, -0.55m]
+}
+
+camera coach {
+  mode follow
+  fov 42deg
+  target actor instructor bone "head"
+  offset [2.7m, 0.45m, 5.3m]
+}
+
+camera orbit_group {
+  mode orbit
+  fov 43deg
+  target actor instructor
+  radius 8m
+  azimuth -28deg
+  elevation 18deg
+}
+
+camera side_floor {
+  mode lookAt
+  fov 40deg
+  position [5.8m, 1.3m, 4.8m]
+  target point [0m, 0.45m, -0.65m]
+}
+
+timeline {
+  # 00:00–00:15 准备
+  cut 0s camera master
+${playExerciseGroup('0s', 'idle', 1)}
+
+  # 00:15–01:00 伸展运动
+  cut 15s camera coach
+${playExerciseGroup('15s', 'stretch', 0.65)}
+  cut 45s camera master
+
+  # 01:00–02:00 原地踏步
+${playExerciseGroup('60s', 'march', 0.9)}
+
+  # 02:00–03:00 开合跳
+  cut 120s camera orbit_group
+${playExerciseGroup('120s', 'jumping-jacks', 0.85)}
+
+  # 03:00–04:00 侧步展髋
+  cut 180s camera side_floor
+${playExerciseGroup('180s', 'side-step', 0.8)}
+
+  # 04:00–04:45 下蹲练习
+  cut 240s camera master
+${playExerciseGroup('240s', 'crouch', 0.7)}
+
+  # 04:45–05:30 俯卧撑
+  cut 285s camera side_floor
+${playExerciseGroup('285s', 'pushup', 0.65)}
+
+  # 05:30–06:05 节奏整理
+  cut 330s camera orbit_group
+${playExerciseGroup('330s', 'dance', 0.85)}
+
+  # 06:05–06:30 放松
+  cut 365s camera coach
+${playExerciseGroup('365s', 'cooldown', 0.6)}
+
+  key 0s master.position [0m, 4.2m, 11.5m]
+  key 390s master.position [0m, 4.8m, 12.5m] ease smoothstep
+  key 120s orbit_group.azimuth -28deg
+  key 180s orbit_group.azimuth 28deg ease smoothstep
+  key 330s orbit_group.azimuth -18deg
+  key 365s orbit_group.azimuth 18deg ease smoothstep
+}`
+
 export const EXAMPLES = [
   {
     id: 'duel',
@@ -329,5 +461,10 @@ timeline {
   key 0s orbit_cam.radius 5m
   key 5s orbit_cam.radius 3.8m ease smoothstep
 }`
+  },
+  {
+    id: 'calisthenics-long',
+    label: '6分30秒广播体操',
+    source: CALISTHENICS_SOURCE
   }
 ]

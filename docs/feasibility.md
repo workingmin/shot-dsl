@@ -24,7 +24,7 @@ Rough.js 可以在两个场景中继续试验：
 
 ## 已验证实现
 
-v0.5 已完成真人比例多人 glTF 骨骼人物和击打特写演示：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；`impact` 相机逐帧读取拳头与头部骨骼的世界坐标并自动构图；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
+v0.6 已完成真人比例多人 glTF 骨骼人物、击打特写和 6 分 30 秒长节目演示：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；`impact` 相机逐帧读取拳头与头部骨骼的世界坐标并自动构图；长节目可在 5 分钟后的分节直接 seek 且重复像素一致；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
 
 当前默认 `human-mannequin` 提供约 7～8 头身、统一 humanoid 骨架以及走、跑、搏击架势、拳击、受击和倒地动作；`robot-expressive` 仅保留为开发备用资产。进入下一阶段仍需补齐真实踢击与格挡受力动作、脚底/手部接触 IK，并建立动作接触点的视觉回归。
 
