@@ -221,16 +221,23 @@ elements.export.addEventListener('click', async () => {
 
 window.__SHOT_DSL_APP__ = {
   compileCount: 0,
-  getState: () => ({
-    ready: Boolean(activeIr),
-    playing,
-    currentTimeMs,
-    sceneId: activeIr?.scene.id ?? null,
-    entityCount: activeIr ? Object.keys(activeIr.entities).length : 0,
-    camera: player?.activeCamera?.name ?? null,
-    skinnedActors: player?.getStats?.().skinnedActors ?? 0,
-    fallbackActors: player?.getStats?.().fallbackActors ?? 0
-  })
+  getState: () => {
+    const stats = player?.getStats?.() ?? {}
+    return {
+      ready: Boolean(activeIr),
+      playing,
+      currentTimeMs,
+      sceneId: activeIr?.scene.id ?? null,
+      entityCount: activeIr ? Object.keys(activeIr.entities).length : 0,
+      camera: player?.activeCamera?.name ?? null,
+      skinnedActors: stats.skinnedActors ?? 0,
+      humanActors: stats.humanActors ?? 0,
+      characterModels: stats.characterModels ?? [],
+      characterMetrics: stats.characterMetrics ?? [],
+      characterSamples: stats.characterSamples ?? [],
+      fallbackActors: stats.fallbackActors ?? 0
+    }
+  }
 }
 
 try {

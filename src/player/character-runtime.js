@@ -3,7 +3,28 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
 
 export const CHARACTER_CATALOG = {
+  'human-mannequin': {
+    id: 'human-mannequin',
+    url: '/assets/characters/HumanMannequin.glb',
+    label: 'Human Mannequin · Mesh2Motion / Quaternius · CC0',
+    proportion: 'human-realistic',
+    authoredBounds: { minY: -0.0003856996, maxY: 1.8291784525 },
+    clips: {
+      idle: 'Idle_A',
+      guard: 'Fighting Idle',
+      walk: 'Walk',
+      run: 'Sprint',
+      punch: 'Punch_Jab',
+      cross: 'Punch_Cross',
+      hook: 'Melee_Hook',
+      // Kept as a v0.1 compatibility alias until a retargeted kick is added.
+      kick: 'Melee_Hook',
+      'hit-face': 'Hit_Head',
+      fall: 'Death_D'
+    }
+  },
   'robot-expressive': {
+    id: 'robot-expressive',
     url: '/assets/characters/RobotExpressive.glb',
     label: 'Robot Expressive · CC0',
     authoredBounds: { minY: -0.0203044343, maxY: 4.7711189772 },
@@ -13,14 +34,16 @@ export const CHARACTER_CATALOG = {
       walk: 'Walking',
       run: 'Running',
       punch: 'Punch',
+      cross: 'Punch',
+      hook: 'Punch',
       kick: 'Jump',
       'hit-face': 'No',
       fall: 'Death'
     }
   },
-  humanoid: { alias: 'robot-expressive' },
-  'humanoid-male': { alias: 'robot-expressive' },
-  'humanoid-female': { alias: 'robot-expressive' }
+  humanoid: { alias: 'human-mannequin' },
+  'humanoid-male': { alias: 'human-mannequin' },
+  'humanoid-female': { alias: 'human-mannequin' }
 }
 
 const resolveCatalogEntry = modelId => {
@@ -49,7 +72,7 @@ const measureCharacterBounds = model => {
   const partBounds = new THREE.Box3()
   model.updateMatrixWorld(true)
   model.traverse(child => {
-    if (!child.isMesh || child.isSkinnedMesh || !child.geometry) return
+    if (!child.isMesh || !child.geometry) return
     if (!child.geometry.boundingBox) child.geometry.computeBoundingBox()
     partBounds.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld)
     bounds.union(partBounds)
@@ -77,9 +100,8 @@ export class CharacterRuntime {
       else child.material = tintMaterial(child.material, tint)
     })
 
-    // SkinnedMesh bounds in this asset include inverse-bind transforms and are
-    // unsuitable for measuring authored height. Rigid body parts provide a
-    // stable rest-pose envelope; skinned hands still follow the same scale.
+    // Measure the authored mesh envelope before sampling animation. This avoids
+    // the inverse-bind expansion produced by Box3.setFromObject on some rigs.
     const measuredBounds = measureCharacterBounds(this.model)
     const measuredHeight = measuredBounds.max.y - measuredBounds.min.y
     const useMeasuredBounds = !measuredBounds.isEmpty() && Number.isFinite(measuredHeight) && measuredHeight > 0.2 && measuredHeight < 20
@@ -91,7 +113,15 @@ export class CharacterRuntime {
         )
     const height = bounds.max.y - bounds.min.y
     const normalizationScale = height > 0 ? 1.78 / height : 1
-    this.metrics = { sourceHeight: height, normalizationScale, sourceMinY: bounds.min.y, sourceMaxY: bounds.max.y }
+    this.metrics = {
+      modelId: this.config.id,
+      proportion: this.config.proportion ?? 'stylized',
+      sourceHeight: height,
+      normalizedHeight: 1.78,
+      normalizationScale,
+      sourceMinY: bounds.min.y,
+      sourceMaxY: bounds.max.y
+    }
     this.model.scale.setScalar(normalizationScale)
     this.model.position.y = -bounds.min.y * normalizationScale
     this.model.updateMatrixWorld(true)
@@ -99,7 +129,7 @@ export class CharacterRuntime {
 
   resolveClip(semanticName) {
     const assetName = this.config.clips[semanticName] ?? semanticName
-    return this.clips.get(assetName) ?? this.clips.get('Idle') ?? this.clips.values().next().value
+    return this.clips.get(assetName) ?? this.clips.get('Idle_A') ?? this.clips.get('Idle') ?? this.clips.values().next().value
   }
 
   actionFor(clip) {

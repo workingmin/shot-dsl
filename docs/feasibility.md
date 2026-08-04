@@ -24,9 +24,17 @@ Rough.js 可以在两个场景中继续试验：
 
 ## 已验证实现
 
-v0.3 已完成多人 glTF 骨骼人物技术验证：`GLTFLoader` 加载 CC0 角色，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
+v0.4 已完成真人比例多人 glTF 骨骼人物演示：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
 
-当前 `robot-expressive` 仅是技术验证资产。进入正式美术阶段仍需要统一 humanoid 骨架、真人比例低模、打斗动作目录及脚底/手部 IK。
+当前默认 `human-mannequin` 提供约 7～8 头身、统一 humanoid 骨架以及走、跑、搏击架势、拳击、受击和倒地动作；`robot-expressive` 仅保留为开发备用资产。进入下一阶段仍需补齐真实踢击与格挡受力动作、脚底/手部接触 IK，并建立动作接触点的视觉回归。
+
+### 人物演示验收门槛
+
+1. 默认快捷样例中的 actor 全部解析为 `human-mannequin`，不允许静默使用程序化方块人；
+2. 归一后角色身高为 1.78 米，模型来源标记为 `human-realistic`；
+3. 双人及三人镜头分别保持 2、3 个独立 SkinnedMesh runtime；
+4. 重复 seek 到相同毫秒时，角色姿势和画布像素一致；
+5. 演示只使用动作目录中有独立真实 Clip 的语义，不把跳跃或摆拳包装成踢击。
 
 ## 分阶段可行性
 

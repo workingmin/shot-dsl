@@ -40,6 +40,7 @@ const run = async () => {
   const socket = new WebSocket(target.webSocketDebuggerUrl)
   const pending = new Map()
   const diagnostics = []
+  const requestUrls = new Map()
   let sequence = 0
 
   await new Promise((resolve, reject) => {
@@ -56,8 +57,11 @@ const run = async () => {
       else resolve(message.result)
       return
     }
+    if (message.method === 'Network.requestWillBeSent') requestUrls.set(message.params.requestId, message.params.request.url)
     if (message.method === 'Runtime.exceptionThrown') diagnostics.push(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text)
-    if (message.method === 'Network.loadingFailed') diagnostics.push(`${message.params.errorText}: ${message.params.type}`)
+    if (message.method === 'Network.loadingFailed' && message.params.errorText !== 'net::ERR_ABORTED') {
+      diagnostics.push(`${message.params.errorText}: ${message.params.type}: ${requestUrls.get(message.params.requestId) ?? 'unknown URL'}`)
+    }
     if (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error') diagnostics.push(message.params.args.map(arg => arg.value ?? arg.description).join(' '))
   })
 
@@ -91,7 +95,11 @@ const run = async () => {
     diagnostics: document.querySelector('#diagnostic-count')?.textContent,
     markers: document.querySelectorAll('.event-marker').length
   })`))
-  if (!initial.app?.ready || initial.app.sceneId !== 'alley_duel' || initial.app.skinnedActors !== 2 || initial.app.fallbackActors !== 0 || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
+  const initialHumanMetrics = initial.app?.characterMetrics ?? []
+  const normalizedHumans = initialHumanMetrics.every(metric => metric.modelId === 'human-mannequin' && metric.proportion === 'human-realistic' && Math.abs(metric.normalizedHeight - 1.78) < 0.001)
+  const initialAssetActions = (initial.app?.characterSamples ?? []).flatMap(sample => sample.actions.map(action => action.asset))
+  const humanActionsResolved = initialAssetActions.includes('Sprint') && initialAssetActions.includes('Fighting Idle')
+  if (!initial.app?.ready || initial.app.sceneId !== 'alley_duel' || initial.app.skinnedActors !== 2 || initial.app.humanActors !== 2 || initial.app.fallbackActors !== 0 || initial.app.characterModels?.join() !== 'human-mannequin' || !normalizedHumans || !humanActionsResolved || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
     throw new Error(`Initial render assertion failed: ${JSON.stringify(initial)}`)
   }
   const initialFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
@@ -108,7 +116,7 @@ const run = async () => {
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'orbit_cam'`)
   const seekState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (seekState.entityCount !== 8 || seekState.skinnedActors !== 3 || seekState.fallbackActors !== 0 || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
+  if (seekState.entityCount !== 8 || seekState.skinnedActors !== 3 || seekState.humanActors !== 3 || seekState.fallbackActors !== 0 || seekState.characterModels?.join() !== 'human-mannequin' || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
 
   const firstSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '100'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)

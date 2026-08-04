@@ -14,7 +14,7 @@ import {
 } from './values.js'
 
 const SUPPORTED_VERSION = '0.1'
-export const SUPPORTED_CLIPS = new Set(['idle', 'guard', 'walk', 'run', 'punch', 'kick', 'hit-face', 'fall'])
+export const SUPPORTED_CLIPS = new Set(['idle', 'guard', 'walk', 'run', 'punch', 'cross', 'hook', 'kick', 'hit-face', 'fall'])
 
 const diagnostic = (code, message, line, column = 1, severity = 'error') => ({
   code,
@@ -152,7 +152,7 @@ const parseScene = (block, diagnostics) => {
 const parseEntity = (block, diagnostics) => {
   if (block.kind === 'actor') {
     const fields = readFields(block, { ...baseDefinitions, model: parseString, color: raw => raw.trim() }, diagnostics)
-    return { id: block.id, kind: 'actor', model: fields.model ?? 'robot-expressive', color: fields.color ?? '#d8d4ca', transform: transformFrom(fields) }
+    return { id: block.id, kind: 'actor', model: fields.model ?? 'human-mannequin', color: fields.color ?? '#d8d4ca', transform: transformFrom(fields) }
   }
   if (block.kind === 'object') {
     const fields = readFields(block, {

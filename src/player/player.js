@@ -311,11 +311,16 @@ export class ShotPlayer {
   }
 
   getStats() {
+    const characters = [...this.runtime.values()].filter(runtime => runtime.character)
     return {
       calls: this.renderer.info.render.calls,
       triangles: this.renderer.info.render.triangles,
       entities: this.runtime.size,
-      skinnedActors: [...this.runtime.values()].filter(runtime => runtime.character).length,
+      skinnedActors: characters.length,
+      humanActors: characters.filter(runtime => runtime.character.metrics.proportion === 'human-realistic').length,
+      characterModels: [...new Set(characters.map(runtime => runtime.character.metrics.modelId))].sort(),
+      characterMetrics: characters.map(runtime => ({ actorId: runtime.entity.id, ...runtime.character.metrics })),
+      characterSamples: characters.map(runtime => ({ actorId: runtime.entity.id, actions: runtime.character.lastSample ?? [] })),
       fallbackActors: [...this.runtime.values()].filter(runtime => runtime.rig).length
     }
   }

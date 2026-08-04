@@ -12,14 +12,14 @@ scene alley_duel {
 }
 
 actor hero {
-  model "robot-expressive"
+  model "human-mannequin"
   color ivory
   position [-1.7m, 0m, 0m]
   rotation [0deg, 90deg, 0deg]
 }
 
 actor thug {
-  model "robot-expressive"
+  model "human-mannequin"
   color tan
   position [1.3m, 0m, 0m]
   rotation [0deg, -90deg, 0deg]
@@ -40,9 +40,9 @@ camera wide {
 
 camera impact {
   mode follow
-  fov 53deg
+  fov 44deg
   target actor hero bone "head"
-  offset [1.8m, 0.45m, 3.2m]
+  offset [2.1m, 0.4m, 3.8m]
 }
 
 timeline {
@@ -50,17 +50,17 @@ timeline {
   play 0s actor hero clip "run" loop true speed 1
   play 0s actor thug clip "guard" loop true speed 1
   key 0s hero.position [-1.7m, 0m, 0m]
-  key 1.2s hero.position [-0.6m, 0m, 0m] ease smoothstep
+  key 1.2s hero.position [-0.4m, 0m, 0m] ease smoothstep
   key 0s thug.position [1.3m, 0m, 0m]
-  key 1.2s thug.position [0.85m, 0m, 0m] ease hold
+  key 1.2s thug.position [0.35m, 0m, 0m] ease hold
   cut 1.15s camera impact
   play 1.2s actor hero clip "punch" loop false blend 0.12s
   play 1.28s actor thug clip "hit-face" loop false blend 0.08s
-  key 1.15s impact.offset [1.8m, 0.45m, 3.2m]
-  key 1.8s impact.offset [1.5m, 0.3m, 2.7m] ease smoothstep
+  key 1.15s impact.offset [2.1m, 0.4m, 3.8m]
+  key 1.8s impact.offset [1.8m, 0.25m, 3.3m] ease smoothstep
   cut 2.05s camera wide
   play 2.1s actor thug clip "guard" loop true blend 0.15s
-  play 3.15s actor thug clip "kick" loop false blend 0.12s
+  play 3.15s actor thug clip "hook" loop false blend 0.12s
   play 3.3s actor hero clip "hit-face" loop false blend 0.08s
   play 4.25s actor hero clip "punch" loop false blend 0.12s
   play 4.38s actor thug clip "fall" loop false blend 0.1s
@@ -81,21 +81,21 @@ scene warehouse_brawl {
 }
 
 actor lead {
-  model "robot-expressive"
+  model "human-mannequin"
   color ivory
   position [0m, 0m, 0.3m]
   rotation [0deg, 0deg, 0deg]
 }
 
 actor left_thug {
-  model "robot-expressive"
+  model "human-mannequin"
   color tan
   position [-2.3m, 0m, -0.5m]
   rotation [0deg, 90deg, 0deg]
 }
 
 actor right_thug {
-  model "robot-expressive"
+  model "human-mannequin"
   color lightgray
   position [2.4m, 0m, -0.7m]
   rotation [0deg, -90deg, 0deg]
@@ -124,9 +124,9 @@ camera master {
 
 camera lead_close {
   mode follow
-  fov 58deg
+  fov 44deg
   target actor lead bone "head"
-  offset [-1.4m, 0.25m, 2.7m]
+  offset [-2m, 0.3m, 3.8m]
 }
 
 camera orbit_cam {
@@ -153,11 +153,11 @@ timeline {
   cut 2.15s camera master
   play 2.3s actor left_thug clip "fall" loop false blend 0.1s
   play 2.85s actor lead clip "guard" loop true blend 0.15s
-  play 3.15s actor right_thug clip "kick" loop false blend 0.12s
+  play 3.15s actor right_thug clip "hook" loop false blend 0.12s
   play 3.32s actor lead clip "hit-face" loop false blend 0.08s
   cut 4s camera orbit_cam
   key 4s orbit_cam.azimuth -32deg
-  play 4.2s actor lead clip "kick" loop false blend 0.12s
+  play 4.2s actor lead clip "cross" loop false blend 0.12s
   play 4.35s actor right_thug clip "hit-face" loop false blend 0.08s
   cut 5.2s camera master
   play 5.35s actor lead clip "punch" loop false blend 0.12s
@@ -179,7 +179,7 @@ scene corridor_chase {
 }
 
 actor runner {
-  model "robot-expressive"
+  model "human-mannequin"
   color ivory
   position [-3m, 0m, 0m]
   rotation [0deg, 90deg, 0deg]
@@ -235,7 +235,7 @@ scene reveal {
 }
 
 actor subject {
-  model "robot-expressive"
+  model "human-mannequin"
   color ivory
   position [0m, 0m, 0m]
   rotation [0deg, -25deg, 0deg]
