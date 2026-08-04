@@ -7,9 +7,10 @@
 `main` 已具备可运行的第一版 Web MVP，覆盖推荐实施顺序的第 1～5 项：
 
 - ShotDSL v0.1 行式 Parser、语义校验、带行号诊断和 Scene IR；
-- Three.js 低模场景、程序化关节人物和四种相机模式；
+- Three.js 低模场景、glTF 骨骼人物和四种相机模式；
 - 绝对时间轴求值、linear/smoothstep/hold、quaternion slerp 和 camera cut；
-- 基于几何轮廓与双描边的 NPR 线稿风格；
+- AnimationMixer 绝对时间采样、动作 crossfade 和多人物独立骨架；
+- 适配蒙皮人物的 OutlineEffect 与静态几何双描边 NPR 风格；
 - 播放、暂停、回到开头、时间轴拖拽和 PNG 当前帧导出；
 - 双人巷战、三人混战、跟拍追逐和环绕建立镜头四个快捷示例。
 
@@ -20,6 +21,12 @@ prototype/storyboarder-sts
 ```
 
 该原型仅作为交互和视觉参考，正式实现不会继承其 parser、Three.js r84 运行时或人物资产。
+
+### 当前人物资产
+
+内置 `robot-expressive` 是一个带完整骨架和 14 个 Animation Clip 的 CC0 glTF 角色。运行时将资产统一归一为 1.78 米、脚底对齐地面，并为每个 actor 克隆独立骨架。语义动作通过资产目录映射到实际 Clip；未知或加载失败的模型会回退到原程序化人物并显示 fallback 状态。
+
+当前资产用于验证骨骼动画技术链路，不代表最终美术形态。后续可以接入统一 humanoid 骨架的真人比例低模及 Quaternius Universal Animation Library，而不改变 ShotDSL 和 Scene IR。
 
 ## 本地运行
 
@@ -37,7 +44,7 @@ npm run build
 npm start
 ```
 
-完整检查包括语言编译与时间轴单元测试；浏览器烟测会验证 WebGL 渲染、播放、示例切换、任意 seek、camera cut、错误诊断和 PNG 画布：
+完整检查包括语言编译与时间轴单元测试；浏览器烟测会验证 glTF 加载、蒙皮人物数量、无 fallback、播放、任意 seek、camera cut、错误诊断和 PNG 画布：
 
 ```bash
 npm run check
@@ -101,7 +108,8 @@ ShotDSL 规范与 Parser
   → NPR 粗线稿风格
   → 当前帧导出
   → LLM 翻译/修复回路
-  → glTF 动作资产与视频导出
+  → 标准 humanoid 动作资产与 IK
+  → 视频导出
 ```
 
-当前里程碑已经验证手写 DSL 到动态播放器的完整链路。下一阶段再接入 LLM 翻译/修复回路，并用标准 glTF 人物和动作 clip 替换程序化占位人物。
+当前里程碑已经验证手写 DSL、多人 glTF 骨骼动画和动态播放器的完整链路。下一阶段可接入真人比例低模、标准 humanoid 动作库和接触 IK，再实现 LLM 翻译/修复回路。

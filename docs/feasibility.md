@@ -22,6 +22,12 @@ Rough.js 可以在两个场景中继续试验：
 
 它不适合承担动态 3D 场景的遮挡、蒙皮人物轮廓和每帧线条渲染。
 
+## 已验证实现
+
+v0.3 已完成多人 glTF 骨骼人物技术验证：`GLTFLoader` 加载 CC0 角色，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；蒙皮角色使用 OutlineEffect，静态几何保留 EdgesGeometry 双描边。
+
+当前 `robot-expressive` 仅是技术验证资产。进入正式美术阶段仍需要统一 humanoid 骨架、真人比例低模、打斗动作目录及脚底/手部 IK。
+
 ## 分阶段可行性
 
 | 阶段 | 可行性 | 判断与约束 |

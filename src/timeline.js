@@ -39,11 +39,28 @@ export const evaluateTimeline = (ir, timeMs) => {
   }
 
   let activeCameraId = Object.values(ir.entities).find(entity => entity.kind === 'camera')?.id ?? null
-  const clips = new Map()
+  const clipEvents = new Map()
   for (const event of ir.events) {
     if (event.timeMs > clampedTime) break
     if (event.type === 'cameraCut') activeCameraId = event.cameraId
-    if (event.type === 'playClip') clips.set(event.actorId, { ...event, elapsedMs: (clampedTime - event.timeMs) * event.speed })
+    if (event.type === 'playClip') {
+      const active = clipEvents.get(event.actorId)
+      clipEvents.set(event.actorId, { current: event, previous: active?.current ?? null })
+    }
+  }
+  const clips = new Map()
+  for (const [actorId, state] of clipEvents) {
+    const current = {
+      ...state.current,
+      elapsedMs: (clampedTime - state.current.timeMs) * state.current.speed
+    }
+    if (state.previous && current.blendMs > 0 && current.elapsedMs < current.blendMs) {
+      current.previous = {
+        ...state.previous,
+        elapsedMs: (clampedTime - state.previous.timeMs) * state.previous.speed
+      }
+    }
+    clips.set(actorId, current)
   }
   return { timeMs: clampedTime, values, activeCameraId, clips }
 }

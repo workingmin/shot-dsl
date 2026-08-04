@@ -35,6 +35,7 @@ let animationFrame = null
 let playbackStartTimestamp = null
 let playbackStartTime = 0
 let compileTimer = null
+let compileRevision = 0
 let activeExample = EXAMPLES[0].id
 let playhead = null
 
@@ -76,7 +77,7 @@ const seek = milliseconds => {
   player.seek(currentTimeMs)
   updateTimeUI()
   const stats = player.getStats()
-  elements.renderStats.textContent = `${stats.entities} objects · ${stats.triangles.toLocaleString()} tris · ${stats.calls} calls`
+  elements.renderStats.textContent = `${stats.skinnedActors} rigged · ${stats.entities} objects · ${stats.triangles.toLocaleString()} tris`
 }
 
 function tick(timestamp) {
@@ -130,19 +131,26 @@ const renderEventTrack = ir => {
   elements.eventTrack.append(playhead)
 }
 
-const compile = () => {
+const compile = async () => {
+  const revision = ++compileRevision
   const started = performance.now()
   const result = compileShotDSL(elements.input.value)
   elements.count.textContent = `${elements.input.value.length} chars`
   renderDiagnostics(result.diagnostics)
   if (!result.ok) {
+    player.cancelPendingLoad()
     setPlaying(false)
+    elements.loading.hidden = true
     setStatus('error', `编译失败 · ${result.diagnostics.length} 个问题`)
     return
   }
 
+  setPlaying(false)
+  elements.loading.hidden = false
+  setStatus('loading', '正在加载蒙皮人物与动作…')
+  const loaded = await player.load(result.ir)
+  if (!loaded || revision !== compileRevision) return
   activeIr = result.ir
-  player.load(activeIr)
   currentTimeMs = 0
   elements.timeline.max = String(activeIr.scene.durationMs)
   elements.duration.textContent = formatTime(activeIr.scene.durationMs)
@@ -151,7 +159,8 @@ const compile = () => {
   renderEventTrack(activeIr)
   seek(0)
   elements.loading.hidden = true
-  setStatus('ready', `编译完成 · ${(performance.now() - started).toFixed(1)} ms`)
+  const warning = player.assetWarnings.length ? ` · ${player.assetWarnings.length} fallback` : ''
+  setStatus('ready', `骨骼动画就绪 · ${(performance.now() - started).toFixed(1)} ms${warning}`)
   window.__SHOT_DSL_APP__.compileCount += 1
 }
 
@@ -218,7 +227,9 @@ window.__SHOT_DSL_APP__ = {
     currentTimeMs,
     sceneId: activeIr?.scene.id ?? null,
     entityCount: activeIr ? Object.keys(activeIr.entities).length : 0,
-    camera: player?.activeCamera?.name ?? null
+    camera: player?.activeCamera?.name ?? null,
+    skinnedActors: player?.getStats?.().skinnedActors ?? 0,
+    fallbackActors: player?.getStats?.().fallbackActors ?? 0
   })
 }
 

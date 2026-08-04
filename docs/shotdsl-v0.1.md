@@ -139,6 +139,8 @@ play <time> actor <actor-id> clip <clip-name>
 
 clip 必须存在于资产目录。缺失 clip 是编译错误或显式 warning，不能静默回退到 `idle`。
 
+DSL 使用语义 Clip 名称，资产目录负责把它映射到具体 glTF Animation Clip。例如 `punch` 可以映射为资产中的 `Punch_Jab`，因此更换角色资产时不需要修改时间轴。`blend` 表示新动作开始后与前一动作交叉混合的时长；任意 seek 时也必须由绝对时间重新计算相同权重。
+
 ## 类型与单位
 
 | 类型 | 示例 | 内部表示 |

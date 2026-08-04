@@ -56,3 +56,21 @@ test('camera cuts and clips resolve identically when seeking out of order', () =
   assert.equal(first.clips.get('a').clip, 'punch')
   assert.equal(first.clips.get('a').elapsedMs, 400)
 })
+
+test('clip evaluation exposes the previous action only inside blend window', () => {
+  const ir = {
+    scene: { durationMs: 3000 },
+    entities: { hero: { id: 'hero', kind: 'actor' }, cam: { id: 'cam', kind: 'camera' } },
+    tracks: [],
+    events: [
+      { timeMs: 0, type: 'playClip', actorId: 'hero', clip: 'run', loop: true, speed: 1, blendMs: 0 },
+      { timeMs: 1000, type: 'playClip', actorId: 'hero', clip: 'punch', loop: false, speed: 1, blendMs: 200 }
+    ]
+  }
+  const blending = evaluateTimeline(ir, 1100).clips.get('hero')
+  assert.equal(blending.clip, 'punch')
+  assert.equal(blending.elapsedMs, 100)
+  assert.equal(blending.previous.clip, 'run')
+  assert.equal(blending.previous.elapsedMs, 1100)
+  assert.equal(evaluateTimeline(ir, 1250).clips.get('hero').previous, undefined)
+})

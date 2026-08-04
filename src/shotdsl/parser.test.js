@@ -40,8 +40,8 @@ timeline {\n  cut 0s camera missing\n}`
 
 test('duplicate keys at the same time are rejected', () => {
   const source = EXAMPLES[0].source.replace(
-    'key 1.2s hero.position [-0.35m, 0m, 0m] ease smoothstep',
-    'key 1.2s hero.position [-0.35m, 0m, 0m] ease smoothstep\n  key 1.2s hero.position [0m, 0m, 0m]'
+    'key 1.2s hero.position [-0.6m, 0m, 0m] ease smoothstep',
+    'key 1.2s hero.position [-0.6m, 0m, 0m] ease smoothstep\n  key 1.2s hero.position [0m, 0m, 0m]'
   )
   const result = compileShotDSL(source)
   assert.equal(result.ok, false)

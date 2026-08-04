@@ -12,16 +12,16 @@ scene alley_duel {
 }
 
 actor hero {
-  model "humanoid"
+  model "robot-expressive"
   color ivory
   position [-1.7m, 0m, 0m]
   rotation [0deg, 90deg, 0deg]
 }
 
 actor thug {
-  model "humanoid"
+  model "robot-expressive"
   color tan
-  position [1.1m, 0m, 0m]
+  position [1.3m, 0m, 0m]
   rotation [0deg, -90deg, 0deg]
 }
 
@@ -42,7 +42,7 @@ camera impact {
   mode follow
   fov 53deg
   target actor hero bone "head"
-  offset [1.5m, 0.35m, 2.6m]
+  offset [1.8m, 0.45m, 3.2m]
 }
 
 timeline {
@@ -50,20 +50,20 @@ timeline {
   play 0s actor hero clip "run" loop true speed 1
   play 0s actor thug clip "guard" loop true speed 1
   key 0s hero.position [-1.7m, 0m, 0m]
-  key 1.2s hero.position [-0.35m, 0m, 0m] ease smoothstep
-  key 0s thug.position [1.1m, 0m, 0m]
-  key 1.2s thug.position [0.65m, 0m, 0m] ease hold
+  key 1.2s hero.position [-0.6m, 0m, 0m] ease smoothstep
+  key 0s thug.position [1.3m, 0m, 0m]
+  key 1.2s thug.position [0.85m, 0m, 0m] ease hold
   cut 1.15s camera impact
-  play 1.2s actor hero clip "punch" loop false
-  play 1.28s actor thug clip "hit-face" loop false
-  key 1.15s impact.offset [1.5m, 0.35m, 2.6m]
-  key 1.8s impact.offset [1.15m, 0.2m, 2.1m] ease smoothstep
+  play 1.2s actor hero clip "punch" loop false blend 0.12s
+  play 1.28s actor thug clip "hit-face" loop false blend 0.08s
+  key 1.15s impact.offset [1.8m, 0.45m, 3.2m]
+  key 1.8s impact.offset [1.5m, 0.3m, 2.7m] ease smoothstep
   cut 2.05s camera wide
-  play 2.1s actor thug clip "guard" loop true
-  play 3.15s actor thug clip "kick" loop false
-  play 3.3s actor hero clip "hit-face" loop false
-  play 4.25s actor hero clip "punch" loop false
-  play 4.38s actor thug clip "fall" loop false
+  play 2.1s actor thug clip "guard" loop true blend 0.15s
+  play 3.15s actor thug clip "kick" loop false blend 0.12s
+  play 3.3s actor hero clip "hit-face" loop false blend 0.08s
+  play 4.25s actor hero clip "punch" loop false blend 0.12s
+  play 4.38s actor thug clip "fall" loop false blend 0.1s
   key 4.3s wide.position [0m, 2.1m, 7.2m]
   key 6s wide.position [0m, 2.8m, 8.4m] ease smoothstep
 }`
@@ -81,21 +81,21 @@ scene warehouse_brawl {
 }
 
 actor lead {
-  model "humanoid"
+  model "robot-expressive"
   color ivory
   position [0m, 0m, 0.3m]
   rotation [0deg, 0deg, 0deg]
 }
 
 actor left_thug {
-  model "humanoid"
+  model "robot-expressive"
   color tan
   position [-2.3m, 0m, -0.5m]
   rotation [0deg, 90deg, 0deg]
 }
 
 actor right_thug {
-  model "humanoid"
+  model "robot-expressive"
   color lightgray
   position [2.4m, 0m, -0.7m]
   rotation [0deg, -90deg, 0deg]
@@ -148,20 +148,20 @@ timeline {
   key 0s right_thug.position [2.4m, 0m, -0.7m]
   key 2.9s right_thug.position [0.9m, 0m, -0.2m] ease smoothstep
   cut 1.25s camera lead_close
-  play 1.35s actor lead clip "punch" loop false
-  play 1.43s actor left_thug clip "hit-face" loop false
+  play 1.35s actor lead clip "punch" loop false blend 0.12s
+  play 1.43s actor left_thug clip "hit-face" loop false blend 0.08s
   cut 2.15s camera master
-  play 2.3s actor left_thug clip "fall" loop false
-  play 2.85s actor lead clip "guard" loop true
-  play 3.15s actor right_thug clip "kick" loop false
-  play 3.32s actor lead clip "hit-face" loop false
+  play 2.3s actor left_thug clip "fall" loop false blend 0.1s
+  play 2.85s actor lead clip "guard" loop true blend 0.15s
+  play 3.15s actor right_thug clip "kick" loop false blend 0.12s
+  play 3.32s actor lead clip "hit-face" loop false blend 0.08s
   cut 4s camera orbit_cam
   key 4s orbit_cam.azimuth -32deg
-  play 4.2s actor lead clip "kick" loop false
-  play 4.35s actor right_thug clip "hit-face" loop false
+  play 4.2s actor lead clip "kick" loop false blend 0.12s
+  play 4.35s actor right_thug clip "hit-face" loop false blend 0.08s
   cut 5.2s camera master
-  play 5.35s actor lead clip "punch" loop false
-  play 5.48s actor right_thug clip "fall" loop false
+  play 5.35s actor lead clip "punch" loop false blend 0.12s
+  play 5.48s actor right_thug clip "fall" loop false blend 0.1s
   key 5.2s master.position [0m, 3.4m, 8.8m]
   key 8s master.position [0m, 4.2m, 10.5m] ease smoothstep
 }`
@@ -179,7 +179,7 @@ scene corridor_chase {
 }
 
 actor runner {
-  model "humanoid"
+  model "robot-expressive"
   color ivory
   position [-3m, 0m, 0m]
   rotation [0deg, 90deg, 0deg]
@@ -219,7 +219,7 @@ timeline {
   key 0s chase.offset [-2.8m, 0.65m, 3.8m]
   key 3.8s chase.offset [-1.7m, 0.4m, 2.9m] ease smoothstep
   cut 4.25s camera finish
-  play 4.3s actor runner clip "idle" loop true
+  play 4.3s actor runner clip "idle" loop true blend 0.18s
 }`
   },
   {
@@ -235,7 +235,7 @@ scene reveal {
 }
 
 actor subject {
-  model "humanoid"
+  model "robot-expressive"
   color ivory
   position [0m, 0m, 0m]
   rotation [0deg, -25deg, 0deg]

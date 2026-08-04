@@ -14,7 +14,7 @@ import {
 } from './values.js'
 
 const SUPPORTED_VERSION = '0.1'
-export const PROCEDURAL_CLIPS = new Set(['idle', 'guard', 'walk', 'run', 'punch', 'kick', 'hit-face', 'fall'])
+export const SUPPORTED_CLIPS = new Set(['idle', 'guard', 'walk', 'run', 'punch', 'kick', 'hit-face', 'fall'])
 
 const diagnostic = (code, message, line, column = 1, severity = 'error') => ({
   code,
@@ -152,7 +152,7 @@ const parseScene = (block, diagnostics) => {
 const parseEntity = (block, diagnostics) => {
   if (block.kind === 'actor') {
     const fields = readFields(block, { ...baseDefinitions, model: parseString, color: raw => raw.trim() }, diagnostics)
-    return { id: block.id, kind: 'actor', model: fields.model ?? 'humanoid', color: fields.color ?? '#d8d4ca', transform: transformFrom(fields) }
+    return { id: block.id, kind: 'actor', model: fields.model ?? 'robot-expressive', color: fields.color ?? '#d8d4ca', transform: transformFrom(fields) }
   }
   if (block.kind === 'object') {
     const fields = readFields(block, {
@@ -274,7 +274,7 @@ const parsePlay = (entry, scene, entities, events, diagnostics) => {
     const actorId = parseIdentifier(tokens[3])
     const clip = parseString(tokens[5])
     if (entities[actorId]?.kind !== 'actor') { diagnostics.push(diagnostic('E_UNKNOWN_ACTOR', `Unknown actor '${actorId}'`, entry.line)); return }
-    if (!PROCEDURAL_CLIPS.has(clip)) diagnostics.push(diagnostic('E_UNKNOWN_CLIP', `Unknown procedural clip '${clip}'`, entry.line))
+    if (!SUPPORTED_CLIPS.has(clip)) diagnostics.push(diagnostic('E_UNKNOWN_CLIP', `Unknown character clip '${clip}'`, entry.line))
     const event = { timeMs, type: 'playClip', actorId, clip, loop: false, speed: 1, blendMs: 0, line: entry.line }
     for (let index = 6; index < tokens.length; index += 2) {
       const name = tokens[index]

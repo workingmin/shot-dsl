@@ -91,7 +91,7 @@ const run = async () => {
     diagnostics: document.querySelector('#diagnostic-count')?.textContent,
     markers: document.querySelectorAll('.event-marker').length
   })`))
-  if (!initial.app?.ready || initial.app.sceneId !== 'alley_duel' || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
+  if (!initial.app?.ready || initial.app.sceneId !== 'alley_duel' || initial.app.skinnedActors !== 2 || initial.app.fallbackActors !== 0 || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
     throw new Error(`Initial render assertion failed: ${JSON.stringify(initial)}`)
   }
   const initialFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
@@ -108,7 +108,12 @@ const run = async () => {
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'orbit_cam'`)
   const seekState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (seekState.entityCount !== 8 || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
+  if (seekState.entityCount !== 8 || seekState.skinnedActors !== 3 || seekState.fallbackActors !== 0 || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
+
+  const firstSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '100'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  const repeatedSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
+  if (repeatedSeekFrame !== firstSeekFrame) throw new Error('Repeated absolute seek produced different character pixels')
 
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
@@ -121,6 +126,10 @@ const run = async () => {
   if (process.env.SCREENSHOT_PATH) {
     await evaluate(`document.querySelector('[data-id="duel"]').click()`)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
+    if (process.env.SCREENSHOT_TIME) {
+      const screenshotTime = Number(process.env.SCREENSHOT_TIME)
+      await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '${screenshotTime}'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    }
     await delay(200)
     const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
     await writeFile(process.env.SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))

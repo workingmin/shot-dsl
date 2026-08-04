@@ -1,5 +1,7 @@
 import * as THREE from 'three'
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js'
 import { evaluateTimeline } from '../timeline.js'
+import { CharacterAssetManager } from './character-runtime.js'
 import { applyProceduralClip, createHumanoid } from './humanoid.js'
 
 const clone = value => structuredClone(value)
@@ -33,7 +35,7 @@ const createInkMesh = (geometry, color, lineMaterial, ghostLineMaterial) => {
 
 const disposeObject = object => {
   object.traverse(child => {
-    child.geometry?.dispose?.()
+    if (child.geometry && !child.geometry.userData.assetShared) child.geometry.dispose?.()
     if (Array.isArray(child.material)) child.material.filter(material => !material.userData.shared).forEach(material => material.dispose?.())
     else if (child.material && !child.material.userData.shared) child.material.dispose?.()
   })
@@ -47,6 +49,12 @@ export class ShotPlayer {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.outlineEffect = new OutlineEffect(this.renderer, {
+      defaultThickness: 0.0045,
+      defaultColor: [0.08, 0.08, 0.07],
+      defaultAlpha: 0.82,
+      defaultKeepAlive: true
+    })
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color('#ebe8df')
     this.clock = new THREE.Clock()
@@ -56,6 +64,9 @@ export class ShotPlayer {
     this.activeCamera = null
     this.currentTimeMs = 0
     this.onCameraChange = null
+    this.loadGeneration = 0
+    this.characterAssets = new CharacterAssetManager()
+    this.assetWarnings = []
     this.lineMaterial = new THREE.LineBasicMaterial({ color: '#22231f', transparent: true, opacity: 0.9 })
     this.ghostLineMaterial = new THREE.LineBasicMaterial({ color: '#4d4b43', transparent: true, opacity: 0.22 })
     this.lineMaterial.userData.shared = true
@@ -65,6 +76,7 @@ export class ShotPlayer {
   }
 
   clear() {
+    for (const runtime of this.runtime.values()) runtime.character?.dispose()
     for (const child of [...this.scene.children]) {
       this.scene.remove(child)
       disposeObject(child)
@@ -73,21 +85,38 @@ export class ShotPlayer {
     this.cameras.clear()
   }
 
-  load(ir) {
+  cancelPendingLoad() {
+    this.loadGeneration += 1
+  }
+
+  async load(ir) {
+    const generation = ++this.loadGeneration
     this.clear()
     this.ir = ir
+    this.assetWarnings = []
     this.scene.background.set('#ebe8df')
     this.addGround()
 
     let hasLight = false
+    const actorPromises = []
     for (const entity of Object.values(ir.entities)) {
-      if (entity.kind === 'actor') this.addActor(entity)
+      if (entity.kind === 'actor') actorPromises.push(this.createActor(entity))
       else if (entity.kind === 'object') this.addObject(entity)
       else if (entity.kind === 'camera') this.addCamera(entity)
       else if (entity.kind === 'light') { this.addLight(entity); hasLight = true }
     }
     if (!hasLight) this.addDefaultLights()
+    const actors = await Promise.all(actorPromises)
+    if (generation !== this.loadGeneration) {
+      for (const runtime of actors) runtime.character?.dispose()
+      return false
+    }
+    for (const runtime of actors) {
+      this.scene.add(runtime.object)
+      this.runtime.set(runtime.entity.id, runtime)
+    }
     this.seek(0)
+    return true
   }
 
   addGround() {
@@ -104,12 +133,21 @@ export class ShotPlayer {
     this.scene.add(plane, grid)
   }
 
-  addActor(entity) {
-    const rig = createHumanoid(entity.color, this.lineMaterial, this.ghostLineMaterial)
-    rig.root.name = entity.id
-    setTransform(rig.root, entity.transform)
-    this.scene.add(rig.root)
-    this.runtime.set(entity.id, { entity, object: rig.root, rig })
+  async createActor(entity) {
+    try {
+      const character = await this.characterAssets.instantiate(entity)
+      const root = new THREE.Group()
+      root.name = entity.id
+      root.add(character.model)
+      setTransform(root, entity.transform)
+      return { entity, object: root, character }
+    } catch (error) {
+      this.assetWarnings.push(`${entity.id}: ${error.message}; using procedural fallback`)
+      const rig = createHumanoid(entity.color, this.lineMaterial, this.ghostLineMaterial)
+      rig.root.name = entity.id
+      setTransform(rig.root, entity.transform)
+      return { entity, object: rig.root, rig }
+    }
   }
 
   addObject(entity) {
@@ -232,9 +270,11 @@ export class ShotPlayer {
     const state = evaluateTimeline(this.ir, this.currentTimeMs)
     this.resetRuntime()
     for (const [target, value] of state.values) this.applyValue(target, value)
-    for (const [actorId, clip] of state.clips) {
-      const actor = this.runtime.get(actorId)
-      if (actor?.rig) applyProceduralClip(actor.rig, clip)
+    for (const [actorId, actor] of this.runtime) {
+      if (actor.entity.kind !== 'actor') continue
+      const clip = state.clips.get(actorId) ?? { clip: 'idle', elapsedMs: this.currentTimeMs, loop: true, blendMs: 0 }
+      if (actor.character) actor.character.sample(clip)
+      else if (actor.rig) applyProceduralClip(actor.rig, clip)
     }
     this.scene.updateMatrixWorld(true)
     const previousCamera = this.activeCamera?.name
@@ -249,6 +289,7 @@ export class ShotPlayer {
     const pixelRatio = this.renderer.getPixelRatio()
     if (this.canvas.width !== Math.floor(width * pixelRatio) || this.canvas.height !== Math.floor(height * pixelRatio)) {
       this.renderer.setSize(width, height, false)
+      this.outlineEffect.setSize(width, height)
     }
     if (this.activeCamera) {
       this.activeCamera.aspect = width / height
@@ -259,7 +300,7 @@ export class ShotPlayer {
   render() {
     if (!this.activeCamera) return
     this.resize()
-    this.renderer.render(this.scene, this.activeCamera)
+    this.outlineEffect.render(this.scene, this.activeCamera)
   }
 
   exportFrame() {
@@ -270,6 +311,12 @@ export class ShotPlayer {
   }
 
   getStats() {
-    return { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles, entities: this.runtime.size }
+    return {
+      calls: this.renderer.info.render.calls,
+      triangles: this.renderer.info.render.triangles,
+      entities: this.runtime.size,
+      skinnedActors: [...this.runtime.values()].filter(runtime => runtime.character).length,
+      fallbackActors: [...this.runtime.values()].filter(runtime => runtime.rig).length
+    }
   }
 }
