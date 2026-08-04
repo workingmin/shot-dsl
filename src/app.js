@@ -77,7 +77,8 @@ const seek = milliseconds => {
   player.seek(currentTimeMs)
   updateTimeUI()
   const stats = player.getStats()
-  elements.renderStats.textContent = `${stats.skinnedActors} rigged · ${stats.entities} objects · ${stats.triangles.toLocaleString()} tris`
+  const fidelity = stats.gameReadyActors ? `${stats.gameReadyActors} game-ready · ` : ''
+  elements.renderStats.textContent = `${stats.renderStyle} · ${fidelity}${stats.skinnedActors} rigged · ${stats.triangles.toLocaleString()} tris`
 }
 
 function tick(timestamp) {
@@ -184,7 +185,13 @@ for (const example of EXAMPLES) {
   button.type = 'button'
   button.className = 'example-chip'
   button.dataset.id = example.id
-  button.textContent = example.label
+  const label = document.createElement('span')
+  label.className = 'example-label'
+  label.textContent = example.label
+  const description = document.createElement('span')
+  description.className = 'example-description'
+  description.textContent = example.description
+  button.append(label, description)
   button.setAttribute('aria-pressed', String(example.id === activeExample))
   button.addEventListener('click', () => selectExample(example))
   elements.examples.append(button)
@@ -232,6 +239,8 @@ window.__SHOT_DSL_APP__ = {
       camera: player?.activeCamera?.name ?? null,
       skinnedActors: stats.skinnedActors ?? 0,
       humanActors: stats.humanActors ?? 0,
+      gameReadyActors: stats.gameReadyActors ?? 0,
+      renderStyle: stats.renderStyle ?? null,
       characterModels: stats.characterModels ?? [],
       characterMetrics: stats.characterMetrics ?? [],
       characterSamples: stats.characterSamples ?? [],

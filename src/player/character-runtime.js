@@ -8,6 +8,7 @@ export const CHARACTER_CATALOG = {
     url: '/assets/characters/HumanMannequin.glb',
     label: 'Human Mannequin · Mesh2Motion / Quaternius · CC0',
     proportion: 'human-realistic',
+    fidelity: 'motion-prototype',
     authoredBounds: { minY: -0.0003856996, maxY: 1.8291784525 },
     clips: {
       idle: 'Idle_A',
@@ -37,6 +38,41 @@ export const CHARACTER_CATALOG = {
         targetBone: 'head',
         responseClip: 'hit-face'
       }
+    }
+  },
+  'game-ready-soldier': {
+    id: 'game-ready-soldier',
+    url: '/assets/characters/Soldier.glb',
+    label: 'Vanguard Soldier · three.js / Mixamo sample',
+    proportion: 'human-realistic',
+    fidelity: 'game-ready',
+    authoredBounds: { minY: 0, maxY: 1.8 },
+    clips: {
+      idle: 'Idle',
+      guard: 'Idle',
+      walk: 'Walk',
+      march: 'Walk',
+      run: 'Run',
+      stretch: 'Idle',
+      dance: 'Idle',
+      'side-step': 'Walk',
+      'jumping-jacks': 'Idle',
+      crouch: 'Idle',
+      pushup: 'Idle',
+      cooldown: 'Idle',
+      punch: 'Idle',
+      cross: 'Idle',
+      hook: 'Idle',
+      kick: 'Idle',
+      'hit-face': 'Idle',
+      fall: 'Idle'
+    },
+    bones: {
+      head: 'mixamorigHead',
+      hand_l: 'mixamorigLeftHand',
+      hand_r: 'mixamorigRightHand',
+      foot_l: 'mixamorigLeftFoot',
+      foot_r: 'mixamorigRightFoot'
     }
   },
   'robot-expressive': {
@@ -82,12 +118,13 @@ const normalizedClipTime = (clip, elapsedMs, loop) => {
   return loop ? seconds % clip.duration : Math.min(seconds, Math.max(0, clip.duration - 1 / 120))
 }
 
-const tintMaterial = (material, tint) => {
+const tintMaterial = (material, tint, renderStyle) => {
   const result = material.clone()
-  if (result.color) result.color.lerp(tint, 0.62)
-  if ('roughness' in result) result.roughness = 1
-  if ('metalness' in result) result.metalness = 0
-  result.side = THREE.FrontSide
+  const cinematic = renderStyle === 'cinematic'
+  if (result.color) result.color.lerp(tint, cinematic ? 0.1 : 0.62)
+  if ('roughness' in result) result.roughness = cinematic ? Math.max(0.42, result.roughness ?? 0.72) : 1
+  if ('metalness' in result && !cinematic) result.metalness = 0
+  if (!material.side || material.side === THREE.FrontSide) result.side = THREE.FrontSide
   return result
 }
 
@@ -105,7 +142,7 @@ const measureCharacterBounds = model => {
 }
 
 export class CharacterRuntime {
-  constructor(template, entity) {
+  constructor(template, entity, options = {}) {
     this.config = template.config
     this.model = SkeletonUtils.clone(template.scene)
     this.mixer = new THREE.AnimationMixer(this.model)
@@ -120,8 +157,8 @@ export class CharacterRuntime {
       child.castShadow = true
       child.receiveShadow = true
       child.frustumCulled = false
-      if (Array.isArray(child.material)) child.material = child.material.map(material => tintMaterial(material, tint))
-      else child.material = tintMaterial(child.material, tint)
+      if (Array.isArray(child.material)) child.material = child.material.map(material => tintMaterial(material, tint, options.renderStyle))
+      else child.material = tintMaterial(child.material, tint, options.renderStyle)
     })
 
     // Measure the authored mesh envelope before sampling animation. This avoids
@@ -140,6 +177,7 @@ export class CharacterRuntime {
     this.metrics = {
       modelId: this.config.id,
       proportion: this.config.proportion ?? 'stylized',
+      fidelity: this.config.fidelity ?? 'stylized',
       sourceHeight: height,
       normalizedHeight: 1.78,
       normalizationScale,
@@ -149,6 +187,10 @@ export class CharacterRuntime {
     this.model.scale.setScalar(normalizationScale)
     this.model.position.y = -bounds.min.y * normalizationScale
     this.model.updateMatrixWorld(true)
+  }
+
+  resolveBone(semanticName) {
+    return this.model.getObjectByName(this.config.bones?.[semanticName] ?? semanticName)
   }
 
   resolveClip(semanticName) {
@@ -214,17 +256,18 @@ export class CharacterAssetManager {
     const config = resolveCatalogEntry(modelId)
     if (!config) throw new Error(`Unknown character asset '${modelId}'`)
     if (!this.templates.has(config.url)) {
-      this.templates.set(config.url, this.loader.loadAsync(config.url).then(gltf => ({
-        scene: gltf.scene,
-        animations: gltf.animations,
-        config
-      })))
+      this.templates.set(config.url, this.loadTemplate(config))
     }
     return this.templates.get(config.url)
   }
 
-  async instantiate(entity) {
+  async loadTemplate(config) {
+    const gltf = await this.loader.loadAsync(config.url)
+    return { scene: gltf.scene, animations: gltf.animations, config }
+  }
+
+  async instantiate(entity, options = {}) {
     const template = await this.load(entity.model)
-    return new CharacterRuntime(template, entity)
+    return new CharacterRuntime(template, entity, options)
   }
 }

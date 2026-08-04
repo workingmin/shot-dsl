@@ -99,6 +99,11 @@ scene <id> {
 }
 ```
 
+`style` 当前支持：
+
+- `cinematic`：保留 glTF 贴图与 PBR 材质，启用环境反射、ACES tone mapping、电影布光和软阴影；
+- `rough-ink`：使用 OutlineEffect 和几何描边的传统分镜线稿模式。
+
 ### 实体
 
 ```text
@@ -222,6 +227,15 @@ focus 0.72
 - `focus` 取 0～1，0 完全偏向拳头，1 完全偏向受击骨骼；
 - 动作目录可声明 `impactTimeMs`、`effectorBone`、`targetBone` 和 `responseClip`，示例按命中峰值安排 `cut` 与受击动作；
 - 在尚未接入手臂 IK 时，可以只在特写切入区间用 actor position 的 `hold` 关键帧做小幅接触校准，切回全景时恢复地面位置。
+
+所有 camera mode 还可声明电影化机位属性：
+
+```text
+shake 0.015m
+roll -1.2deg
+```
+
+`shake` 使用 scene seed 和绝对时间求值，同一时间点重复 seek 会得到完全相同的相机偏移；`roll` 表示镜头绕视轴的倾斜。二者都支持 `key` 动画。
 
 ## Scene IR 示例
 

@@ -96,10 +96,10 @@ const run = async () => {
     markers: document.querySelectorAll('.event-marker').length
   })`))
   const initialHumanMetrics = initial.app?.characterMetrics ?? []
-  const normalizedHumans = initialHumanMetrics.every(metric => metric.modelId === 'human-mannequin' && metric.proportion === 'human-realistic' && Math.abs(metric.normalizedHeight - 1.78) < 0.001)
+  const normalizedHumans = initialHumanMetrics.every(metric => metric.modelId === 'game-ready-soldier' && metric.proportion === 'human-realistic' && metric.fidelity === 'game-ready' && Math.abs(metric.normalizedHeight - 1.78) < 0.001)
   const initialAssetActions = (initial.app?.characterSamples ?? []).flatMap(sample => sample.actions.map(action => action.asset))
-  const humanActionsResolved = initialAssetActions.includes('Sprint') && initialAssetActions.includes('Fighting Idle')
-  if (!initial.app?.ready || initial.app.sceneId !== 'alley_duel' || initial.app.skinnedActors !== 2 || initial.app.humanActors !== 2 || initial.app.fallbackActors !== 0 || initial.app.characterModels?.join() !== 'human-mannequin' || !normalizedHumans || !humanActionsResolved || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
+  const humanActionsResolved = initialAssetActions.length === 2 && initialAssetActions.every(asset => asset === 'Idle')
+  if (!initial.app?.ready || initial.app.sceneId !== 'night_extraction' || initial.app.skinnedActors !== 2 || initial.app.humanActors !== 2 || initial.app.gameReadyActors !== 2 || initial.app.renderStyle !== 'cinematic' || initial.app.fallbackActors !== 0 || initial.app.characterModels?.join() !== 'game-ready-soldier' || !normalizedHumans || !humanActionsResolved || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
     throw new Error(`Initial render assertion failed: ${JSON.stringify(initial)}`)
   }
   const initialFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
@@ -111,12 +111,12 @@ const run = async () => {
   const animatedFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (animatedFrame === initialFrame) throw new Error('Canvas pixels did not change during playback')
 
-  await evaluate(`document.querySelector('[data-id="brawl"]').click()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_brawl'`)
+  await evaluate(`document.querySelector('[data-id="ensemble-brawl"]').click()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_ensemble_brawl'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'orbit_cam'`)
   const seekState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (seekState.entityCount !== 8 || seekState.skinnedActors !== 3 || seekState.humanActors !== 3 || seekState.fallbackActors !== 0 || seekState.characterModels?.join() !== 'human-mannequin' || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
+  if (seekState.entityCount !== 8 || seekState.skinnedActors !== 3 || seekState.humanActors !== 3 || seekState.gameReadyActors !== 0 || seekState.fallbackActors !== 0 || seekState.characterModels?.join() !== 'human-mannequin' || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
 
   const firstSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '100'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
@@ -126,14 +126,14 @@ const run = async () => {
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
 
-  await evaluate(`document.querySelector('[data-id="face-impact"]').click()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'face_punch_closeup'`)
+  await evaluate(`document.querySelector('[data-id="fight-closeup"]').click()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'fight_coverage_closeup'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'face_impact'`)
   const impactState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
   const impactFrame = impactState.activeCameraFrame
   const punchSample = impactState.characterSamples?.find(sample => sample.actorId === 'boxer')?.actions.find(action => action.asset === 'Punch_Jab')
-  if (impactState.skinnedActors !== 2 || impactState.humanActors !== 2 || impactState.fallbackActors !== 0 || impactFrame?.mode !== 'impact' || impactFrame?.boneTargetsResolved !== 2 || impactFrame?.contactDistance > 0.2 || Math.abs((punchSample?.time ?? -1) - 0.292) > 0.002) {
+  if (impactState.skinnedActors !== 2 || impactState.humanActors !== 2 || impactState.gameReadyActors !== 0 || impactState.fallbackActors !== 0 || impactFrame?.mode !== 'impact' || impactFrame?.boneTargetsResolved !== 2 || impactFrame?.contactDistance > 0.2 || Math.abs((punchSample?.time ?? -1) - 0.292) > 0.002) {
     throw new Error(`Impact close-up assertion failed: ${JSON.stringify(impactState)}`)
   }
   const firstImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
@@ -165,7 +165,7 @@ const run = async () => {
   if (errorCount < 2) throw new Error(`Expected compiler diagnostics, received ${errorCount}`)
 
   if (process.env.SCREENSHOT_PATH) {
-    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? 'duel'
+    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? 'cinematic-pursuit'
     await evaluate(`document.querySelector(${JSON.stringify(`[data-id="${screenshotExample}"]`)}).click()`)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
     if (process.env.SCREENSHOT_TIME) {

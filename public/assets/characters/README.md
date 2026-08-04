@@ -1,5 +1,19 @@
 # Character assets
 
+## Soldier.glb
+
+- Source: three.js r185 `examples/models/gltf/Soldier.glb`
+- Original sample attribution: Mixamo / Vanguard character
+- Upstream: https://github.com/mrdoob/three.js/blob/r185/examples/models/gltf/Soldier.glb
+- Local SHA-256: `dfb230fc1f942f259dd00281a1186953ad602fc5d69067ce63e24b2aa439736b`
+- Included clips: `Idle`, `Walk`, `Run`, `TPose`
+
+This textured, skinned character is the game-ready visual target used by the
+cinematic pursuit demo. It is vendored for the internal prototype from the
+official three.js animation example. Its upstream asset rights must be reviewed
+before any external or commercial distribution; it must not silently become a
+production asset.
+
 ## HumanMannequin.glb
 
 - Source: Mesh2Motion `human-base-animations.glb` and `human-addon-animations.glb`

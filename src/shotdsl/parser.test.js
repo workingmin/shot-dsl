@@ -40,8 +40,8 @@ timeline {\n  cut 0s camera missing\n}`
 
 test('duplicate keys at the same time are rejected', () => {
   const source = EXAMPLES[0].source.replace(
-    'key 1.2s hero.position [-0.4m, 0m, 0m] ease smoothstep',
-    'key 1.2s hero.position [-0.4m, 0m, 0m] ease smoothstep\n  key 1.2s hero.position [0m, 0m, 0m]'
+    'key 2.3s scout.position [-1.9m, 0m, 0.25m] ease smoothstep',
+    'key 2.3s scout.position [-1.9m, 0m, 0.25m] ease smoothstep\n  key 2.3s scout.position [0m, 0m, 0m]'
   )
   const result = compileShotDSL(source)
   assert.equal(result.ok, false)
@@ -50,8 +50,8 @@ test('duplicate keys at the same time are rejected', () => {
 
 test('semantic compiler rejects properties on the wrong entity kind', () => {
   const source = EXAMPLES[0].source.replace(
-    'key 0s hero.position [-1.7m, 0m, 0m]',
-    'key 0s hero.fov 35deg'
+    'key 0.7s scout.position [-3.8m, 0m, 0.25m]',
+    'key 0.7s scout.fov 35deg'
   )
   const result = compileShotDSL(source)
   assert.equal(result.ok, false)
@@ -59,26 +59,35 @@ test('semantic compiler rejects properties on the wrong entity kind', () => {
 })
 
 test('impact camera compiles two actor bone targets into Scene IR', () => {
-  const example = EXAMPLES.find(item => item.id === 'face-impact')
+  const example = EXAMPLES.find(item => item.id === 'fight-closeup')
   const result = compileShotDSL(example.source)
   assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
   const camera = result.ir.entities.face_impact
   assert.equal(camera.mode, 'impact')
   assert.deepEqual(camera.attacker, { kind: 'entity', entityKind: 'actor', entityId: 'boxer', bone: 'hand_l' })
   assert.deepEqual(camera.victim, { kind: 'entity', entityKind: 'actor', entityId: 'opponent', bone: 'head' })
-  assert.equal(camera.distance, 1.45)
+  assert.equal(camera.distance, 1.42)
   assert.equal(camera.side, 'right')
   assert.equal(camera.focus, 0.72)
 })
 
 test('impact camera requires two actor bone targets', () => {
-  const source = EXAMPLES.find(item => item.id === 'face-impact').source.replace(
+  const source = EXAMPLES.find(item => item.id === 'fight-closeup').source.replace(
     '  victim actor opponent bone "head"\n',
     ''
   )
   const result = compileShotDSL(source)
   assert.equal(result.ok, false)
   assert.ok(result.diagnostics.some(item => item.code === 'E_CAMERA_IMPACT_TARGETS'))
+})
+
+test('cinematic camera compiles deterministic shake and roll tracks', () => {
+  const example = EXAMPLES.find(item => item.id === 'cinematic-pursuit')
+  const result = compileShotDSL(example.source)
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
+  assert.equal(result.ir.scene.style, 'cinematic')
+  assert.equal(result.ir.entities.shoulder_track.shake, 0.015)
+  assert.ok(result.ir.tracks.some(track => track.target === 'shoulder_track.shake'))
 })
 
 test('long calisthenics example compiles a six-minute multi-section timeline', () => {

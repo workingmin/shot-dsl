@@ -19,6 +19,7 @@ export const SUPPORTED_CLIPS = new Set([
   'jumping-jacks', 'crouch', 'pushup', 'cooldown',
   'punch', 'cross', 'hook', 'kick', 'hit-face', 'fall'
 ])
+export const SUPPORTED_STYLES = new Set(['cinematic', 'rough-ink'])
 
 const diagnostic = (code, message, line, column = 1, severity = 'error') => ({
   code,
@@ -150,7 +151,9 @@ const parseScene = (block, diagnostics) => {
   }
   if (durationMs <= 0) diagnostics.push(diagnostic('E_DURATION', 'Scene duration must be greater than zero', block.line))
   if (!Number.isInteger(fps) || fps <= 0 || fps > 120) diagnostics.push(diagnostic('E_FPS', 'Scene fps must be an integer between 1 and 120', block.line))
-  return { id: block.id, durationMs, fps, seed: Math.trunc(fields.seed ?? 1), style: fields.style ?? 'rough-ink' }
+  const style = fields.style ?? 'cinematic'
+  if (!SUPPORTED_STYLES.has(style)) diagnostics.push(diagnostic('E_STYLE', `Unsupported render style '${style}'`, block.line))
+  return { id: block.id, durationMs, fps, seed: Math.trunc(fields.seed ?? 1), style }
 }
 
 const parseEntity = (block, diagnostics) => {
@@ -197,7 +200,9 @@ const parseEntity = (block, diagnostics) => {
       azimuth: parseAngle,
       elevation: parseAngle,
       side: parseIdentifier,
-      focus: parseNumber
+      focus: parseNumber,
+      shake: parseLength,
+      roll: parseAngle
     }, diagnostics)
     const mode = fields.mode ?? 'lookAt'
     if (!['fixed', 'lookAt', 'follow', 'orbit', 'impact'].includes(mode)) diagnostics.push(diagnostic('E_CAMERA_MODE', `Unsupported camera mode '${mode}'`, block.line))
@@ -207,6 +212,7 @@ const parseEntity = (block, diagnostics) => {
     if (fields.side && !['left', 'right'].includes(fields.side)) diagnostics.push(diagnostic('E_CAMERA_SIDE', `Camera '${block.id}' side must be left or right`, block.line))
     if (fields.distance !== undefined && fields.distance <= 0) diagnostics.push(diagnostic('E_CAMERA_DISTANCE', `Camera '${block.id}' distance must be greater than zero`, block.line))
     if (fields.focus !== undefined && (fields.focus < 0 || fields.focus > 1)) diagnostics.push(diagnostic('E_CAMERA_FOCUS', `Camera '${block.id}' focus must be between 0 and 1`, block.line))
+    if (fields.shake !== undefined && fields.shake < 0) diagnostics.push(diagnostic('E_CAMERA_SHAKE', `Camera '${block.id}' shake cannot be negative`, block.line))
     return {
       id: block.id,
       kind: 'camera',
@@ -222,6 +228,8 @@ const parseEntity = (block, diagnostics) => {
       elevation: fields.elevation ?? 15 * Math.PI / 180,
       side: fields.side ?? 'right',
       focus: fields.focus ?? 0.68,
+      shake: fields.shake ?? 0,
+      roll: fields.roll ?? 0,
       transform: transformFrom(fields)
     }
   }
@@ -237,14 +245,16 @@ const propertyParsers = {
   fov: { type: 'number', parse: parseAngle },
   radius: { type: 'number', parse: parseLength },
   azimuth: { type: 'number', parse: parseAngle },
-  elevation: { type: 'number', parse: parseAngle }
+  elevation: { type: 'number', parse: parseAngle },
+  shake: { type: 'number', parse: parseLength },
+  roll: { type: 'number', parse: parseAngle }
 }
 
 const animatableByKind = {
   actor: new Set(['position', 'rotation', 'scale', 'visibility']),
   object: new Set(['position', 'rotation', 'scale', 'visibility']),
   light: new Set(),
-  camera: new Set(['position', 'rotation', 'visibility', 'fov', 'offset', 'radius', 'azimuth', 'elevation'])
+  camera: new Set(['position', 'rotation', 'visibility', 'fov', 'offset', 'radius', 'azimuth', 'elevation', 'shake', 'roll'])
 }
 
 const parseKey = (entry, scene, entities, tracks, diagnostics) => {

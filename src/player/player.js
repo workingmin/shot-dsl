@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { evaluateTimeline } from '../timeline.js'
 import { CharacterAssetManager } from './character-runtime.js'
 import { applyProceduralClip, createHumanoid } from './humanoid.js'
@@ -20,11 +21,18 @@ const geometryFor = entity => {
   return new THREE.BoxGeometry(...entity.size)
 }
 
-const createInkMesh = (geometry, color, lineMaterial, ghostLineMaterial) => {
-  const material = new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true })
+const createPrimitiveMesh = (geometry, color, lineMaterial, ghostLineMaterial, renderStyle) => {
+  const cinematic = renderStyle === 'cinematic'
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: cinematic ? 0.72 : 1,
+    metalness: cinematic ? 0.04 : 0,
+    flatShading: !cinematic
+  })
   const mesh = new THREE.Mesh(geometry, material)
   mesh.castShadow = true
   mesh.receiveShadow = true
+  if (cinematic) return mesh
   const edges = new THREE.EdgesGeometry(geometry, 18)
   const primary = new THREE.LineSegments(edges, lineMaterial)
   const echo = new THREE.LineSegments(edges, ghostLineMaterial)
@@ -49,6 +57,8 @@ export class ShotPlayer {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 1.05
     this.outlineEffect = new OutlineEffect(this.renderer, {
       defaultThickness: 0.0045,
       defaultColor: [0.08, 0.08, 0.07],
@@ -56,6 +66,9 @@ export class ShotPlayer {
       defaultKeepAlive: true
     })
     this.scene = new THREE.Scene()
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    this.studioEnvironment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    pmrem.dispose()
     this.scene.background = new THREE.Color('#ebe8df')
     this.clock = new THREE.Clock()
     this.runtime = new Map()
@@ -68,6 +81,7 @@ export class ShotPlayer {
     this.loadGeneration = 0
     this.characterAssets = new CharacterAssetManager()
     this.assetWarnings = []
+    this.renderStyle = 'cinematic'
     this.lineMaterial = new THREE.LineBasicMaterial({ color: '#22231f', transparent: true, opacity: 0.9 })
     this.ghostLineMaterial = new THREE.LineBasicMaterial({ color: '#4d4b43', transparent: true, opacity: 0.22 })
     this.lineMaterial.userData.shared = true
@@ -95,7 +109,7 @@ export class ShotPlayer {
     this.clear()
     this.ir = ir
     this.assetWarnings = []
-    this.scene.background.set('#ebe8df')
+    this.configureRenderStyle(ir.scene.style)
     this.addGround()
 
     let hasLight = false
@@ -120,23 +134,34 @@ export class ShotPlayer {
     return true
   }
 
+  configureRenderStyle(style) {
+    this.renderStyle = style === 'cinematic' ? 'cinematic' : 'rough-ink'
+    const cinematic = this.renderStyle === 'cinematic'
+    this.scene.background.set(cinematic ? '#252a2f' : '#ebe8df')
+    this.scene.environment = cinematic ? this.studioEnvironment : null
+    this.scene.fog = cinematic ? new THREE.Fog('#252a2f', 11, 30) : null
+    this.renderer.toneMapping = cinematic ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping
+    this.renderer.toneMappingExposure = cinematic ? 1.12 : 1
+  }
+
   addGround() {
+    const cinematic = this.renderStyle === 'cinematic'
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 30),
-      new THREE.MeshStandardMaterial({ color: '#ddd9cf', roughness: 1 })
+      new THREE.MeshStandardMaterial({ color: cinematic ? '#555b60' : '#ddd9cf', roughness: cinematic ? 0.86 : 1, metalness: cinematic ? 0.03 : 0 })
     )
     plane.rotation.x = -Math.PI / 2
     plane.position.y = -0.005
     plane.receiveShadow = true
     const grid = new THREE.GridHelper(30, 30, '#77766e', '#b8b5ac')
     grid.material.transparent = true
-    grid.material.opacity = 0.34
+    grid.material.opacity = cinematic ? 0.08 : 0.34
     this.scene.add(plane, grid)
   }
 
   async createActor(entity) {
     try {
-      const character = await this.characterAssets.instantiate(entity)
+      const character = await this.characterAssets.instantiate(entity, { renderStyle: this.renderStyle })
       const root = new THREE.Group()
       root.name = entity.id
       root.add(character.model)
@@ -152,7 +177,7 @@ export class ShotPlayer {
   }
 
   addObject(entity) {
-    const object = createInkMesh(geometryFor(entity), entity.color, this.lineMaterial, this.ghostLineMaterial)
+    const object = createPrimitiveMesh(geometryFor(entity), entity.color, this.lineMaterial, this.ghostLineMaterial, this.renderStyle)
     object.name = entity.id
     setTransform(object, entity.transform)
     this.scene.add(object)
@@ -185,16 +210,24 @@ export class ShotPlayer {
   }
 
   addDefaultLights() {
-    this.scene.add(new THREE.HemisphereLight('#ffffff', '#8f8a7f', 2.2))
-    const key = new THREE.DirectionalLight('#fffaf1', 2.8)
-    key.position.set(4, 8, 6)
+    const cinematic = this.renderStyle === 'cinematic'
+    this.scene.add(new THREE.HemisphereLight(cinematic ? '#dce9ff' : '#ffffff', cinematic ? '#342f2d' : '#8f8a7f', cinematic ? 1.45 : 2.2))
+    const key = new THREE.DirectionalLight(cinematic ? '#fff1da' : '#fffaf1', cinematic ? 3.4 : 2.8)
+    key.position.set(4.5, 8, 5.5)
     key.castShadow = true
-    key.shadow.mapSize.set(1024, 1024)
+    key.shadow.mapSize.set(cinematic ? 2048 : 1024, cinematic ? 2048 : 1024)
     key.shadow.camera.left = -8
     key.shadow.camera.right = 8
     key.shadow.camera.top = 8
     key.shadow.camera.bottom = -8
     this.scene.add(key)
+    if (cinematic) {
+      const fill = new THREE.DirectionalLight('#91b7df', 1.35)
+      fill.position.set(-6, 4, 2)
+      const rim = new THREE.DirectionalLight('#ffd0a1', 1.8)
+      rim.position.set(2, 5, -7)
+      this.scene.add(fill, rim)
+    }
   }
 
   resetRuntime() {
@@ -232,7 +265,7 @@ export class ShotPlayer {
     const runtime = this.runtime.get(target.entityId)
     if (!runtime) return { point: new THREE.Vector3(0, 1, 0), boneResolved: false }
     if (target.bone && runtime.character) {
-      const bone = runtime.character.model.getObjectByName(target.bone)
+      const bone = runtime.character.resolveBone(target.bone)
       if (bone) return { point: bone.getWorldPosition(new THREE.Vector3()), boneResolved: true }
     }
     const point = runtime.object.getWorldPosition(new THREE.Vector3())
@@ -299,6 +332,15 @@ export class ShotPlayer {
       else if (state.transform.rotationQuaternion) camera.quaternion.fromArray(state.transform.rotationQuaternion)
       else camera.rotation.set(...state.transform.rotation, 'XYZ')
     }
+    const shake = state.shake ?? 0
+    if (shake > 0) {
+      const seconds = this.currentTimeMs / 1000
+      const seed = this.ir?.scene.seed ?? 1
+      camera.translateX(Math.sin(seconds * 17.3 + seed * 0.17) * shake)
+      camera.translateY(Math.sin(seconds * 23.7 + seed * 0.31) * shake * 0.62)
+    }
+    camera.rotateZ((state.roll ?? 0) + Math.sin(this.currentTimeMs / 1000 * 13.1 + (this.ir?.scene.seed ?? 1)) * shake * 0.08)
+    this.cameraDebug = { ...this.cameraDebug, shake, roll: state.roll ?? 0, renderStyle: this.renderStyle }
     return camera
   }
 
@@ -338,7 +380,8 @@ export class ShotPlayer {
   render() {
     if (!this.activeCamera) return
     this.resize()
-    this.outlineEffect.render(this.scene, this.activeCamera)
+    if (this.renderStyle === 'cinematic') this.renderer.render(this.scene, this.activeCamera)
+    else this.outlineEffect.render(this.scene, this.activeCamera)
   }
 
   exportFrame() {
@@ -356,6 +399,8 @@ export class ShotPlayer {
       entities: this.runtime.size,
       skinnedActors: characters.length,
       humanActors: characters.filter(runtime => runtime.character.metrics.proportion === 'human-realistic').length,
+      gameReadyActors: characters.filter(runtime => runtime.character.metrics.fidelity === 'game-ready').length,
+      renderStyle: this.renderStyle,
       characterModels: [...new Set(characters.map(runtime => runtime.character.metrics.modelId))].sort(),
       characterMetrics: characters.map(runtime => ({ actorId: runtime.entity.id, ...runtime.character.metrics })),
       characterSamples: characters.map(runtime => ({ actorId: runtime.entity.id, actions: runtime.character.lastSample ?? [] })),
