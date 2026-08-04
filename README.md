@@ -1,32 +1,76 @@
-# Shot DSL prototype
+# Shot DSL
 
-Internal prototype for converting Storyboarder-style shot descriptions into a live wireframe preview.
+文本化 3D 动态分镜预演工具：把自然语言镜头描述转换为可校验、可版本化的 ShotDSL，再在浏览器中生成可播放、可拖拽时间轴的 3D 动态分镜。
 
-## Run locally
+## 当前状态
 
-Requirements: Node.js 22 or newer.
+`main` 分支处于需求与技术方案定义阶段，不包含历史 Storyboarder 运行时代码。
 
-```bash
-npm install
-npm run dev
+已完成的静态线稿原型归档在远端分支：
+
+```text
+prototype/storyboarder-sts
 ```
 
-Open <http://127.0.0.1:4173>.
+该原型仅作为交互和视觉参考，正式实现不会继承其 parser、Three.js r84 运行时或人物资产。
 
-For a production-style local build:
+## 产品目标
 
-```bash
-npm run build
-npm start
+用户只需描述场景、人物动作和镜头意图，系统即可生成一个能播放、暂停、拖拽和逐帧导出的 3D 动态分镜预演。
+
+核心价值：
+
+- 用文本快速表达镜头调度，而不是手工摆放所有关键帧；
+- 用 DSL 和内部关键帧模型保证结果可复现、可编辑、可测试；
+- 用低成本 3D 与粗线稿风格验证构图、走位、节奏和剪辑；
+- LLM 只负责翻译意图，不直接控制播放器运行时。
+
+## 推荐架构
+
+```mermaid
+flowchart LR
+    A[用户自然语言：镜头描述] --> B[LLM 翻译层<br/>注入 ShotDSL 规范、样例和资产目录]
+    B --> C[ShotDSL 文本<br/>实体、时间轴 key、相机 mode、动作 clip]
+    C --> D[Parser + Semantic Compiler<br/>语法诊断、引用校验、单位归一、时间排序]
+    D --> E[Scene IR<br/>确定性的 JSON 关键帧与事件]
+    E --> F[Timeline Engine<br/>lerp / quaternion slerp / hold / cut]
+    F --> G[Three.js Player]
+    G --> H[NPR 线稿管线<br/>toon + edge/Sobel + jitter]
+    H --> I[浏览器编辑器<br/>播放、暂停、拖拽、逐帧导出]
+    D -->|错误与修复提示| B
 ```
 
-## Prototype scope
+## 核心设计原则
 
-- textarea input with a 180 ms live-render debounce;
-- historical Storyboarder STS phrase parsing;
-- male, female, and box-model character rendering;
-- shot size, composition, angle, lens, lighting, room, and pose parameters;
-- deterministic defaults derived from the normalized input text;
-- WebGL canvas preview and parsed-parameter inspection.
+1. **DSL 是产品契约**：LLM、手写编辑器和未来可视化编辑器都输出同一 ShotDSL。
+2. **Scene IR 是运行时契约**：Parser 之后只处理确定性 JSON，不在渲染层解释自然语言。
+3. **随机必须可复现**：所有自动构图、抖线和轻微手持效果都由显式 seed 驱动。
+4. **时间轴可任意 seek**：拖到任意时间点都应直接求值得到相同状态，不能依赖从 0 秒逐帧播放。
+5. **硬切是离散事件**：位置和缩放用 lerp，旋转用 quaternion slerp；`cut`、可见性和字符串属性不插值。
+6. **LLM 可替换**：模型供应商不得成为 DSL、Parser 或播放器的依赖。
 
-The historical code and assets are isolated under `prototype/upstream`. A future production implementation should replace that directory with an independent parser, scene AST, and renderer.
+## 方案结论
+
+- 自然语言 → ShotDSL：可行，但必须有语法约束、解析校验和自动修复回路。
+- ShotDSL → JSON 关键帧：高可行，应优先于 LLM 和视觉风格实现。
+- Three.js 动态播放器：高可行，角色动作使用 `AnimationMixer`，场景变换使用自研确定性时间轴求值器。
+- RoughJS-WebGL：按原描述不可直接采用。官方 Rough.js 是 Canvas/SVG 库，不提供 WebGL 3D 渲染器。
+- 粗线条风格：可用 Three.js NPR 后处理实现；Rough.js 可作为静帧标注或二维覆盖层实验。
+
+## 文档
+
+- [技术可行性与实施路线](docs/feasibility.md)
+- [ShotDSL v0.1 草案](docs/shotdsl-v0.1.md)
+
+## 建议实施顺序
+
+```text
+ShotDSL 规范与 Parser
+  → Scene IR 与确定性 Timeline Engine
+  → Three.js 播放器与时间轴 UI
+  → LLM 翻译/修复回路
+  → NPR 粗线稿风格
+  → 帧与视频导出
+```
+
+先验证 DSL 能否稳定表达动态镜头，再投入 LLM Prompt 和视觉风格，可以显著降低返工风险。
