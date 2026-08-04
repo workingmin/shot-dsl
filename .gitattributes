@@ -1,0 +1,3 @@
+# Historical Storyboarder model assets are vendored byte-for-byte.
+prototype/upstream/src/data/sts/**/*.jd binary
+prototype/upstream/src/data/sts/**/*.obj binary
