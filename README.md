@@ -4,7 +4,14 @@
 
 ## 当前状态
 
-`main` 分支处于需求与技术方案定义阶段，不包含历史 Storyboarder 运行时代码。
+`main` 已具备可运行的第一版 Web MVP，覆盖推荐实施顺序的第 1～5 项：
+
+- ShotDSL v0.1 行式 Parser、语义校验、带行号诊断和 Scene IR；
+- Three.js 低模场景、程序化关节人物和四种相机模式；
+- 绝对时间轴求值、linear/smoothstep/hold、quaternion slerp 和 camera cut；
+- 基于几何轮廓与双描边的 NPR 线稿风格；
+- 播放、暂停、回到开头、时间轴拖拽和 PNG 当前帧导出；
+- 双人巷战、三人混战、跟拍追逐和环绕建立镜头四个快捷示例。
 
 已完成的静态线稿原型归档在远端分支：
 
@@ -13,6 +20,29 @@ prototype/storyboarder-sts
 ```
 
 该原型仅作为交互和视觉参考，正式实现不会继承其 parser、Three.js r84 运行时或人物资产。
+
+## 本地运行
+
+需要 Node.js 22 或更高版本：
+
+```bash
+npm install
+npm run dev
+```
+
+浏览器打开 `http://127.0.0.1:4173`。生产构建及静态服务：
+
+```bash
+npm run build
+npm start
+```
+
+完整检查包括语言编译与时间轴单元测试；浏览器烟测会验证 WebGL 渲染、播放、示例切换、任意 seek、camera cut、错误诊断和 PNG 画布：
+
+```bash
+npm run check
+npm run smoke
+```
 
 ## 产品目标
 
@@ -68,9 +98,10 @@ flowchart LR
 ShotDSL 规范与 Parser
   → Scene IR 与确定性 Timeline Engine
   → Three.js 播放器与时间轴 UI
-  → LLM 翻译/修复回路
   → NPR 粗线稿风格
-  → 帧与视频导出
+  → 当前帧导出
+  → LLM 翻译/修复回路
+  → glTF 动作资产与视频导出
 ```
 
-先验证 DSL 能否稳定表达动态镜头，再投入 LLM Prompt 和视觉风格，可以显著降低返工风险。
+当前里程碑已经验证手写 DSL 到动态播放器的完整链路。下一阶段再接入 LLM 翻译/修复回路，并用标准 glTF 人物和动作 clip 替换程序化占位人物。
