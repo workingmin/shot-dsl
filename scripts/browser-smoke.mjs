@@ -83,9 +83,11 @@ const run = async () => {
     }
     throw new Error(`Timed out waiting for: ${expression}`)
   }
-  const selectExample = id => evaluate(`(() => {
+  const selectExample = label => evaluate(`(() => {
     const select = document.querySelector('#scene-example')
-    select.value = ${JSON.stringify(id)}
+    const option = [...select.options].find(item => item.textContent === ${JSON.stringify(label)})
+    if (!option) throw new Error('Unknown scene example: ' + ${JSON.stringify(label)})
+    select.value = option.value
     select.dispatchEvent(new Event('change', { bubbles: true }))
   })()`)
 
@@ -116,7 +118,7 @@ const run = async () => {
   const animatedFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (animatedFrame === initialFrame) throw new Error('Canvas pixels did not change during playback')
 
-  await selectExample('ensemble-brawl')
+  await selectExample('三人 · 群体调度')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_ensemble_brawl'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'orbit_cam'`)
@@ -131,7 +133,7 @@ const run = async () => {
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
 
-  await selectExample('fight-closeup')
+  await selectExample('拳击 · 特写覆盖')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'fight_coverage_closeup'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'face_impact'`)
@@ -146,7 +148,7 @@ const run = async () => {
   const repeatedImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (repeatedImpactFrame !== firstImpactFrame) throw new Error('Repeated impact-camera seek produced different pixels')
 
-  await selectExample('calisthenics-long')
+  await selectExample('长时间轴 · 06：30')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'broadcast_calisthenics_390s'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '305000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().currentTimeMs === 305000`)
@@ -170,7 +172,7 @@ const run = async () => {
   if (errorCount < 2) throw new Error(`Expected compiler diagnostics, received ${errorCount}`)
 
   if (process.env.SCREENSHOT_PATH) {
-    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? 'cinematic-pursuit'
+    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? '游戏角色 · 追踪镜头'
     await selectExample(screenshotExample)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
     if (process.env.SCREENSHOT_TIME) {

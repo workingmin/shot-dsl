@@ -63,6 +63,14 @@ npm run build
 npm start
 ```
 
+### 管理场景示例
+
+场景示例保存在 [`examples/`](examples/) 目录，每个 `.shotdsl` 文件对应下拉框中的一个示例，文件名（不含扩展名）就是显示名称。新增、改名或编辑文件后：
+
+- `npm run dev` 会自动同步目录，刷新页面即可看到变化；
+- `npm run build` 会重新扫描目录，并把示例文件和自动生成的清单写入 `dist/examples/`；
+- 默认示例是 `游戏角色 · 追踪镜头.shotdsl`，删除它后会使用按中文文件名排序的第一个示例。
+
 完整检查包括语言编译与时间轴单元测试；浏览器烟测会验证 glTF 加载、蒙皮人物数量、无 fallback、播放、任意 seek、camera cut、错误诊断和 PNG 画布：
 
 ```bash

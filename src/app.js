@@ -1,4 +1,4 @@
-import { EXAMPLES } from './examples.js'
+import { loadExamples, loadExampleSource } from './examples.js'
 import { ShotPlayer } from './player/player.js'
 import { compileShotDSL } from './shotdsl/parser.js'
 
@@ -36,7 +36,8 @@ let playbackStartTimestamp = null
 let playbackStartTime = 0
 let compileTimer = null
 let compileRevision = 0
-let activeExample = EXAMPLES[0].id
+let examples = []
+let exampleLoadRevision = 0
 let playhead = null
 
 const formatTime = milliseconds => {
@@ -172,24 +173,38 @@ const scheduleCompile = () => {
   compileTimer = setTimeout(compile, 240)
 }
 
-const selectExample = example => {
-  activeExample = example.id
-  elements.sceneExample.value = activeExample
-  elements.input.value = example.source
+const selectExample = async example => {
+  const revision = ++exampleLoadRevision
+  clearTimeout(compileTimer)
+  elements.sceneExample.value = example.id
   setPlaying(false)
-  compile()
+  setStatus('loading', `正在加载场景示例 · ${example.label}`)
+  try {
+    const source = await loadExampleSource(example)
+    if (revision !== exampleLoadRevision) return
+    elements.input.value = source
+    await compile()
+  } catch (error) {
+    if (revision !== exampleLoadRevision) return
+    elements.loading.hidden = true
+    renderDiagnostics([{ code: 'E_EXAMPLE', message: error.message, line: 1 }])
+    setStatus('error', '场景示例加载失败')
+  }
 }
 
-for (const example of EXAMPLES) {
-  const option = document.createElement('option')
-  option.value = example.id
-  option.textContent = example.label
-  option.title = example.description
-  elements.sceneExample.append(option)
+const populateExamples = async () => {
+  examples = await loadExamples()
+  elements.sceneExample.replaceChildren()
+  for (const example of examples) {
+    const option = document.createElement('option')
+    option.value = example.id
+    option.textContent = example.label
+    elements.sceneExample.append(option)
+  }
 }
 
 elements.sceneExample.addEventListener('change', () => {
-  const example = EXAMPLES.find(item => item.id === elements.sceneExample.value)
+  const example = examples.find(item => item.id === elements.sceneExample.value)
   if (example) selectExample(example)
 })
 
@@ -246,13 +261,18 @@ window.__SHOT_DSL_APP__ = {
   }
 }
 
-try {
-  player = new ShotPlayer(elements.canvas)
-  player.onCameraChange = cameraName => { elements.shotLabel.textContent = `CAM ${cameraName.toUpperCase()}` }
-  selectExample(EXAMPLES[0])
-} catch (error) {
-  elements.loading.hidden = true
-  renderDiagnostics([{ code: 'E_WEBGL', message: error.message, line: 1 }])
-  setStatus('error', 'WebGL 初始化失败')
-  console.error(error)
+const initialize = async () => {
+  try {
+    player = new ShotPlayer(elements.canvas)
+    player.onCameraChange = cameraName => { elements.shotLabel.textContent = `CAM ${cameraName.toUpperCase()}` }
+    await populateExamples()
+    await selectExample(examples[0])
+  } catch (error) {
+    elements.loading.hidden = true
+    renderDiagnostics([{ code: 'E_INIT', message: error.message, line: 1 }])
+    setStatus('error', '播放器初始化失败')
+    console.error(error)
+  }
 }
+
+initialize()

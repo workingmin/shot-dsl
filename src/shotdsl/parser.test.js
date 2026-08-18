@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EXAMPLES } from '../examples.js'
+import { readExamples } from '../../scripts/example-files.mjs'
 import { compileShotDSL } from './parser.js'
+
+const EXAMPLES = await readExamples()
+const exampleForScene = sceneId => EXAMPLES.find(example => example.source.includes(`scene ${sceneId} {`))
 
 test('all bundled examples compile into deterministic Scene IR', () => {
   for (const example of EXAMPLES) {
@@ -59,7 +62,7 @@ test('semantic compiler rejects properties on the wrong entity kind', () => {
 })
 
 test('impact camera compiles two actor bone targets into Scene IR', () => {
-  const example = EXAMPLES.find(item => item.id === 'fight-closeup')
+  const example = exampleForScene('fight_coverage_closeup')
   const result = compileShotDSL(example.source)
   assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
   const camera = result.ir.entities.face_impact
@@ -72,7 +75,7 @@ test('impact camera compiles two actor bone targets into Scene IR', () => {
 })
 
 test('impact camera requires two actor bone targets', () => {
-  const source = EXAMPLES.find(item => item.id === 'fight-closeup').source.replace(
+  const source = exampleForScene('fight_coverage_closeup').source.replace(
     '  victim actor opponent bone "head"\n',
     ''
   )
@@ -82,7 +85,7 @@ test('impact camera requires two actor bone targets', () => {
 })
 
 test('cinematic camera compiles deterministic shake and roll tracks', () => {
-  const example = EXAMPLES.find(item => item.id === 'cinematic-pursuit')
+  const example = exampleForScene('night_extraction')
   const result = compileShotDSL(example.source)
   assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
   assert.equal(result.ir.scene.style, 'cinematic')
@@ -91,7 +94,7 @@ test('cinematic camera compiles deterministic shake and roll tracks', () => {
 })
 
 test('long calisthenics example compiles a six-minute multi-section timeline', () => {
-  const example = EXAMPLES.find(item => item.id === 'calisthenics-long')
+  const example = exampleForScene('broadcast_calisthenics_390s')
   const result = compileShotDSL(example.source)
   assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
   assert.equal(result.ir.scene.durationMs, 390000)

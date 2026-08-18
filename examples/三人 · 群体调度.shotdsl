@@ -1,0 +1,101 @@
+shotdsl 0.1
+
+scene warehouse_ensemble_brawl {
+  duration 8s
+  fps 24
+  seed 9017
+  style cinematic
+}
+
+actor lead {
+  model "human-mannequin"
+  color ivory
+  position [0m, 0m, 0.3m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor left_thug {
+  model "human-mannequin"
+  color tan
+  position [-2.3m, 0m, -0.5m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor right_thug {
+  model "human-mannequin"
+  color lightgray
+  position [2.4m, 0m, -0.7m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+object barrel_left {
+  primitive cylinder
+  radius 0.42m
+  height 1m
+  color #495057
+  position [-3.1m, 0.5m, -2m]
+}
+
+object barrel_right {
+  primitive cylinder
+  radius 0.42m
+  height 1m
+  color #60483d
+  position [3.1m, 0.5m, -2m]
+}
+
+camera master {
+  mode lookAt
+  fov 41deg
+  position [0m, 3.2m, 8.7m]
+  target point [0m, 1m, -0.2m]
+}
+
+camera lead_close {
+  mode follow
+  fov 35deg
+  target actor lead bone "head"
+  offset [-1.85m, 0.18m, 3.15m]
+  shake 0.012m
+}
+
+camera orbit_cam {
+  mode orbit
+  fov 38deg
+  target actor lead
+  radius 5.1m
+  azimuth -30deg
+  elevation 16deg
+  roll 0.6deg
+}
+
+timeline {
+  cut 0s camera master
+  play 0s actor lead clip "guard" loop true
+  play 0s actor left_thug clip "run" loop true
+  play 0s actor right_thug clip "run" loop true
+  key 0s left_thug.position [-2.3m, 0m, -0.5m]
+  key 1.3s left_thug.position [-0.75m, 0m, 0m] ease smoothstep
+  key 0s right_thug.position [2.4m, 0m, -0.7m]
+  key 2.9s right_thug.position [0.9m, 0m, -0.2m] ease smoothstep
+
+  cut 1.2s camera lead_close
+  play 1.35s actor lead clip "punch" loop false blend 0.12s
+  play 1.43s actor left_thug clip "hit-face" loop false blend 0.08s
+  cut 2.15s camera master
+  play 2.3s actor left_thug clip "fall" loop false blend 0.1s
+  play 2.85s actor lead clip "guard" loop true blend 0.15s
+  play 3.15s actor right_thug clip "hook" loop false blend 0.12s
+  play 3.32s actor lead clip "hit-face" loop false blend 0.08s
+
+  cut 4s camera orbit_cam
+  key 4s orbit_cam.azimuth -30deg
+  key 5.15s orbit_cam.azimuth 12deg ease smoothstep
+  play 4.2s actor lead clip "cross" loop false blend 0.12s
+  play 4.35s actor right_thug clip "hit-face" loop false blend 0.08s
+  cut 5.2s camera master
+  play 5.35s actor lead clip "punch" loop false blend 0.12s
+  play 5.48s actor right_thug clip "fall" loop false blend 0.1s
+  key 5.2s master.position [0m, 3.2m, 8.7m]
+  key 8s master.position [0m, 4.1m, 10.3m] ease smoothstep
+}

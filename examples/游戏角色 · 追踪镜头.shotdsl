@@ -1,0 +1,95 @@
+shotdsl 0.1
+
+scene night_extraction {
+  duration 8.5s
+  fps 30
+  seed 7331
+  style cinematic
+}
+
+actor scout {
+  model "game-ready-soldier"
+  color white
+  position [-3.8m, 0m, 0.25m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor partner {
+  model "game-ready-soldier"
+  color lightgray
+  position [-4.8m, 0m, -0.8m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+object loading_bay {
+  primitive box
+  size [9m, 0.12m, 5m]
+  color darkslategray
+  position [0m, 0.06m, -0.5m]
+}
+
+object container_left {
+  primitive box
+  size [2.5m, 2.6m, 1.6m]
+  color #38444d
+  position [-1.7m, 1.3m, -2.4m]
+}
+
+object container_right {
+  primitive box
+  size [2.2m, 2.2m, 1.5m]
+  color #473f3a
+  position [3.2m, 1.1m, -2.2m]
+}
+
+camera establish {
+  mode lookAt
+  fov 37deg
+  position [0m, 3.1m, 10.5m]
+  target point [0m, 1m, -0.4m]
+  roll -0.8deg
+}
+
+camera shoulder_track {
+  mode follow
+  fov 43deg
+  target actor scout bone "head"
+  offset [-2.7m, 0.4m, 3.1m]
+  shake 0.015m
+}
+
+camera long_lens {
+  mode lookAt
+  fov 27deg
+  position [7.6m, 1.55m, 4.2m]
+  target point [3.4m, 1.1m, 0m]
+}
+
+timeline {
+  cut 0s camera establish
+  play 0s actor scout clip "idle" loop true
+  play 0s actor partner clip "idle" loop true
+
+  play 0.7s actor scout clip "walk" loop true blend 0.22s
+  play 0.9s actor partner clip "walk" loop true blend 0.22s
+  key 0.7s scout.position [-3.8m, 0m, 0.25m]
+  key 2.3s scout.position [-1.9m, 0m, 0.25m] ease smoothstep
+  key 0.9s partner.position [-4.8m, 0m, -0.8m]
+  key 2.5s partner.position [-2.9m, 0m, -0.8m] ease smoothstep
+
+  cut 2.15s camera shoulder_track
+  play 2.25s actor scout clip "run" loop true speed 1.08 blend 0.18s
+  play 2.45s actor partner clip "run" loop true speed 1.05 blend 0.18s
+  key 6.65s scout.position [4.1m, 0m, 0.25m] ease smoothstep
+  key 6.75s partner.position [3.2m, 0m, -0.8m] ease smoothstep
+  key 2.15s shoulder_track.offset [-2.7m, 0.4m, 3.1m]
+  key 6.4s shoulder_track.offset [-1.85m, 0.25m, 2.5m] ease smoothstep
+  key 2.15s shoulder_track.shake 0.015m
+  key 5.7s shoulder_track.shake 0.035m ease smoothstep
+
+  cut 6.55s camera long_lens
+  play 7.15s actor scout clip "idle" loop true blend 0.24s
+  play 7.35s actor partner clip "idle" loop true blend 0.24s
+  key 6.55s long_lens.position [7.6m, 1.55m, 4.2m]
+  key 8.5s long_lens.position [6.7m, 1.48m, 3.6m] ease smoothstep
+}

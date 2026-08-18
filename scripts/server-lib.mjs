@@ -8,6 +8,7 @@ const contentTypes = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.shotdsl': 'text/plain; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml'
 }
