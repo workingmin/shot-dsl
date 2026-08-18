@@ -1,0 +1,178 @@
+shotdsl 0.1
+
+scene corridor_tracking_take {
+  duration 12s
+  fps 24
+  seed 6157
+  style cinematic
+}
+
+actor woman {
+  model "human-mannequin"
+  color ivory
+  position [-5m, 0m, 0m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor passerby_left {
+  model "human-mannequin"
+  color darkgray
+  position [2.5m, 0m, -1.5m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor passerby_right {
+  model "human-mannequin"
+  color tan
+  position [-1.2m, 0m, 2m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+object corridor_floor {
+  primitive box
+  size [25m, 0.08m, 5m]
+  color #808080
+  position [0m, 0.04m, 0m]
+}
+
+object wall_left {
+  primitive box
+  size [25m, 3.2m, 0.08m]
+  color #b5b8bb
+  position [0m, 1.6m, -2.54m]
+}
+
+object wall_right {
+  primitive box
+  size [25m, 3.2m, 0.08m]
+  color #b5b8bb
+  position [0m, 1.6m, 2.54m]
+}
+
+object ceiling {
+  primitive box
+  size [25m, 0.08m, 5m]
+  color #9a9ea3
+  position [0m, 3.2m, 0m]
+}
+
+object pillar_left_1 {
+  primitive box
+  size [0.3m, 3m, 0.3m]
+  color #a0a5aa
+  position [1.5m, 1.5m, -2.2m]
+}
+
+object pillar_left_2 {
+  primitive box
+  size [0.3m, 3m, 0.3m]
+  color #a0a5aa
+  position [4.5m, 1.5m, -2.2m]
+}
+
+object pillar_right_1 {
+  primitive box
+  size [0.3m, 3m, 0.3m]
+  color #a0a5aa
+  position [-1m, 1.5m, 2.2m]
+}
+
+object pillar_right_2 {
+  primitive box
+  size [0.3m, 3m, 0.3m]
+  color #a0a5aa
+  position [-4m, 1.5m, 2.2m]
+}
+
+object door_1 {
+  primitive box
+  size [1m, 2.2m, 0.06m]
+  color #6b5030
+  position [2.5m, 1.1m, -2.51m]
+}
+
+object door_2 {
+  primitive box
+  size [1m, 2.2m, 0.06m]
+  color #6b5030
+  position [5.5m, 1.1m, -2.51m]
+}
+
+camera front_track {
+  mode follow
+  fov 44deg
+  target actor woman bone "head"
+  offset [0m, 0.3m, 3.2m]
+  shake 0.012m
+}
+
+camera side_track {
+  mode follow
+  fov 40deg
+  target actor woman bone "head"
+  offset [-2.5m, 0.2m, 2.8m]
+  shake 0.01m
+}
+
+camera low_angle {
+  mode follow
+  fov 38deg
+  target actor woman bone "head"
+  offset [0m, -0.6m, 2.5m]
+  roll 3deg
+  shake 0.015m
+}
+
+camera reveal {
+  mode lookAt
+  fov 45deg
+  position [-5m, 1.8m, 0m]
+  target point [-5m, 1m, 0m]
+}
+
+timeline {
+  cut 0s camera reveal
+  play 0s actor woman clip "walk" loop true
+  play 0s actor passerby_left clip "idle" loop true
+  play 0s actor passerby_right clip "idle" loop true
+
+  # 人物从远处走来，镜头保持
+  key 0s woman.position [-5m, 0m, 0m]
+  key 12s woman.position [8m, 0m, 0m] ease smoothstep
+
+  # 正面跟拍接入
+  cut 1.5s camera front_track
+  key 1.5s front_track.offset [0m, 0.3m, 3.2m]
+  key 5.5s front_track.offset [0m, 0.25m, 2.8m] ease smoothstep
+
+  # 经过路人甲（左前方）
+  play 3.5s actor passerby_left clip "walk" loop false blend 0.2s
+  key 3.5s passerby_left.position [2.5m, 0m, -1.5m]
+  key 5s passerby_left.position [4m, 0m, -1.5m] ease smoothstep
+
+  # 切侧面跟拍，展现走廊纵深感
+  cut 4.5s camera side_track
+  key 4.5s side_track.offset [-2.5m, 0.2m, 2.8m]
+  key 7.5s side_track.offset [-2.2m, 0.2m, 2.5m] ease smoothstep
+  key 4.5s side_track.shake 0.01m
+  key 6.5s side_track.shake 0.018m ease smoothstep
+
+  # 经过路人乙（右侧）
+  play 5.8s actor passerby_right clip "walk" loop false blend 0.2s
+  key 5.8s passerby_right.position [-1.2m, 0m, 2m]
+  key 7.5s passerby_right.position [-3m, 0m, 2m] ease smoothstep
+
+  # 人物节奏变化 — 减速
+  key 6s woman.position [1.5m, 0m, 0m]
+  key 9s woman.position [4m, 0m, 0m] ease smoothstep
+
+  # 低角度跟拍，增加紧张感
+  cut 7.5s camera low_angle
+  key 7.5s low_angle.offset [0m, -0.6m, 2.5m]
+  key 10s low_angle.offset [0m, -0.5m, 2.2m] ease smoothstep
+
+  # 正面跟拍收尾，人物渐远
+  cut 10.5s camera front_track
+  key 10.5s front_track.offset [0m, 0.3m, 2.2m]
+  key 12s front_track.offset [0m, 0.3m, 3.5m] ease smoothstep
+}

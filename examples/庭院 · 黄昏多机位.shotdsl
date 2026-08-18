@@ -1,0 +1,209 @@
+shotdsl 0.1
+
+scene courtyard_dusk_narrative {
+  duration 11s
+  fps 24
+  seed 8426
+  style cinematic
+}
+
+actor protagonist {
+  model "human-mannequin"
+  color ivory
+  position [0m, 0m, 0.8m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor companion {
+  model "human-mannequin"
+  color tan
+  position [0.4m, 0m, 2.5m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+object ground {
+  primitive box
+  size [12m, 0.08m, 10m]
+  color #8a7b64
+  position [0m, 0.04m, 0.5m]
+}
+
+object wall_back {
+  primitive box
+  size [12m, 2.8m, 0.15m]
+  color #c4b295
+  position [0m, 1.4m, -4.5m]
+}
+
+object wall_left {
+  primitive box
+  size [0.15m, 2.8m, 10m]
+  color #c4b295
+  position [-6m, 1.4m, 0.5m]
+}
+
+object wall_right {
+  primitive box
+  size [0.15m, 2.8m, 10m]
+  color #c4b295
+  position [6m, 1.4m, 0.5m]
+}
+
+object archway {
+  primitive box
+  size [2.5m, 3m, 0.2m]
+  color #b8a07e
+  position [0m, 1.5m, -4.42m]
+}
+
+object archway_opening {
+  primitive box
+  size [1.8m, 2.2m, 0.25m]
+  color #5a4e3a
+  position [0m, 1.1m, -4.4m]
+}
+
+object tree_trunk {
+  primitive cylinder
+  radius 0.2m
+  height 2.5m
+  color #5c442a
+  position [-2.5m, 1.25m, 2.5m]
+}
+
+object tree_canopy {
+  primitive sphere
+  radius 1.8m
+  color #3a5a3a
+  position [-2.5m, 3.1m, 2.5m]
+}
+
+object bench {
+  primitive box
+  size [1.5m, 0.4m, 0.5m]
+  color #6b4f32
+  position [-3.5m, 0.2m, 0.5m]
+}
+
+object lantern {
+  primitive cylinder
+  radius 0.12m
+  height 0.4m
+  color #e8c860
+  position [3.5m, 1.8m, 1.5m]
+}
+
+camera crane_wide {
+  mode lookAt
+  fov 40deg
+  position [0m, 5.5m, 8m]
+  target point [0m, 0.8m, 0.6m]
+  roll -0.5deg
+}
+
+camera dolly_in {
+  mode follow
+  fov 38deg
+  target actor protagonist bone "head"
+  offset [0m, 0.3m, 4.5m]
+}
+
+camera two_shot {
+  mode lookAt
+  fov 36deg
+  position [1.2m, 1.6m, 4m]
+  target point [0.2m, 1m, 1.6m]
+}
+
+camera low_angle_hero {
+  mode follow
+  fov 34deg
+  target actor protagonist bone "head"
+  offset [0.8m, -0.8m, 2.2m]
+  roll 4deg
+}
+
+camera orbit_dusk {
+  mode orbit
+  fov 42deg
+  target actor protagonist
+  radius 4.8m
+  azimuth 15deg
+  elevation 12deg
+}
+
+camera companion_shot {
+  mode follow
+  fov 35deg
+  target actor companion bone "head"
+  offset [-1.2m, 0.1m, 2.6m]
+}
+
+camera rooftop {
+  mode lookAt
+  fov 45deg
+  position [5.8m, 3.5m, -2m]
+  target point [0.5m, 0.5m, 0.8m]
+  roll 1.2deg
+}
+
+timeline {
+  cut 0s camera crane_wide
+  play 0s actor protagonist clip "idle" loop true
+  play 0s actor companion clip "idle" loop true
+
+  # 主角从树下走向庭院中央
+  play 0.8s actor protagonist clip "walk" loop true blend 0.2s
+  key 0s protagonist.position [0m, 0m, 0.8m]
+  key 3s protagonist.position [0m, 0m, 0.8m] ease smoothstep
+  key 0s companion.position [0.4m, 0m, 2.5m]
+  key 3s companion.position [0.4m, 0m, 2.5m] ease smoothstep
+
+  # 吊臂缓缓下降
+  key 0s crane_wide.position [0m, 5.5m, 8m]
+  key 2.5s crane_wide.position [0m, 4.2m, 6.5m] ease smoothstep
+
+  # 缓慢推近
+  cut 2.5s camera dolly_in
+  key 2.5s dolly_in.offset [0m, 0.3m, 4.5m]
+  key 4.5s dolly_in.offset [0m, 0.25m, 3.5m] ease smoothstep
+
+  # 双人镜头，建立关系
+  cut 4s camera two_shot
+  play 4s actor protagonist clip "idle" loop true blend 0.2s
+  play 4s actor companion clip "idle" loop true blend 0.2s
+
+  # 主角低角度英雄镜头
+  cut 5s camera low_angle_hero
+  play 5.2s actor protagonist clip "stretch" loop false blend 0.12s
+  play 5.5s actor companion clip "idle" loop true blend 0.15s
+
+  # 环绕镜头
+  cut 6.2s camera orbit_dusk
+  key 6.2s orbit_dusk.azimuth 15deg
+  key 8s orbit_dusk.azimuth -25deg ease smoothstep
+  key 6.2s orbit_dusk.elevation 12deg
+  key 8s orbit_dusk.elevation 18deg ease smoothstep
+  play 6.4s actor protagonist clip "idle" loop true blend 0.15s
+  play 6.6s actor companion clip "stretch" loop false blend 0.15s
+
+  # 切到同伴视角
+  cut 7.5s camera companion_shot
+  play 7.7s actor companion clip "stretch" loop false blend 0.12s
+  play 8s actor protagonist clip "idle" loop true blend 0.12s
+
+  # 屋顶视角 — 黄昏院落全景
+  cut 8.8s camera rooftop
+  play 9s actor protagonist clip "idle" loop true blend 0.2s
+  play 9s actor companion clip "idle" loop true blend 0.2s
+
+  # 主角缓慢走向同伴
+  play 9.2s actor protagonist clip "walk" loop true blend 0.2s
+  key 8.8s protagonist.position [0m, 0m, 0.8m]
+  key 11s protagonist.position [0.2m, 0m, 2.2m] ease smoothstep
+
+  # 结尾回到高角度全景
+  cut 10s camera crane_wide
+  key 10s crane_wide.position [0m, 4.2m, 6.5m]
+  key 11s crane_wide.position [0m, 5m, 7.5m] ease smoothstep
+}

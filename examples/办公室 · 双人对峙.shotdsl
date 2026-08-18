@@ -1,0 +1,141 @@
+shotdsl 0.1
+
+scene office_confrontation {
+  duration 10s
+  fps 24
+  seed 5023
+  style cinematic
+}
+
+actor executive {
+  model "human-mannequin"
+  color ivory
+  position [-0.8m, 0m, 0.6m]
+  rotation [0deg, 15deg, 0deg]
+}
+
+actor employee {
+  model "human-mannequin"
+  color wheat
+  position [0.8m, 0m, 0.5m]
+  rotation [0deg, -15deg, 0deg]
+}
+
+object desk {
+  primitive box
+  size [2.2m, 0.76m, 1.2m]
+  color #4b3a2b
+  position [0m, 0.38m, 0m]
+}
+
+object window_frame {
+  primitive box
+  size [2.8m, 2.4m, 0.1m]
+  color #8aa0b0
+  position [0m, 1.8m, -3m]
+}
+
+object window_pane {
+  primitive box
+  size [2.6m, 2.2m, 0.04m]
+  color #b8d0e0
+  position [0m, 1.8m, -2.93m]
+}
+
+object rug {
+  primitive box
+  size [3.5m, 0.02m, 3m]
+  color #4a5058
+  position [0m, 0.01m, 0.5m]
+}
+
+camera master {
+  mode lookAt
+  fov 42deg
+  position [0m, 2.2m, 4.5m]
+  target point [0m, 1m, 0.5m]
+}
+
+camera over_executive {
+  mode follow
+  fov 36deg
+  target actor executive bone "head"
+  offset [1.5m, 0.1m, 2.4m]
+  shake 0.003m
+}
+
+camera over_employee {
+  mode follow
+  fov 36deg
+  target actor employee bone "head"
+  offset [-1.5m, 0.1m, 2.4m]
+  shake 0.003m
+}
+
+camera closeup_executive {
+  mode follow
+  fov 30deg
+  target actor executive bone "head"
+  offset [-0.5m, 0.05m, 1.2m]
+  roll -2deg
+}
+
+camera closeup_employee {
+  mode follow
+  fov 30deg
+  target actor employee bone "head"
+  offset [0.5m, 0.05m, 1.2m]
+  roll 2deg
+}
+
+camera side_window {
+  mode lookAt
+  fov 44deg
+  position [-3.5m, 1.8m, 1.2m]
+  target point [-0.3m, 1m, 0.5m]
+}
+
+timeline {
+  cut 0s camera master
+  play 0s actor executive clip "idle" loop true
+  play 0s actor employee clip "idle" loop true
+
+  # 对峙开场 — 全景
+  cut 0.8s camera over_executive
+  play 1s actor executive clip "stretch" loop false blend 0.15s
+  play 1.5s actor employee clip "idle" loop true blend 0.15s
+
+  # 切到员工过肩，表现回应
+  cut 2.2s camera over_employee
+  play 2.4s actor employee clip "stretch" loop false blend 0.15s
+  play 2.8s actor executive clip "idle" loop true blend 0.15s
+
+  # 推近到高管特写
+  cut 3.5s camera closeup_executive
+  play 3.7s actor executive clip "stretch" loop false blend 0.12s
+  play 4s actor employee clip "idle" loop true blend 0.12s
+
+  # 切到员工特写，表现紧张
+  cut 4.8s camera closeup_employee
+  play 5s actor employee clip "stretch" loop false blend 0.12s
+  play 5.3s actor executive clip "idle" loop true blend 0.12s
+  key 4.8s closeup_employee.offset [0.5m, 0.05m, 1.2m]
+  key 5.6s closeup_employee.offset [0.45m, 0m, 1.05m] ease smoothstep
+
+  # 回到全景，气氛缓和
+  cut 6.2s camera master
+  play 6.4s actor executive clip "stretch" loop false blend 0.15s
+  play 6.7s actor employee clip "stretch" loop false blend 0.15s
+  key 6.2s master.position [0m, 2.2m, 4.5m]
+  key 7.5s master.position [0m, 2.1m, 4.2m] ease smoothstep
+
+  # 侧窗剪影视角
+  cut 7.8s camera side_window
+  play 8s actor executive clip "idle" loop true blend 0.2s
+  play 8s actor employee clip "idle" loop true blend 0.2s
+
+  # 结尾远景
+  cut 9s camera master
+  key 9s master.position [0m, 2.2m, 4.5m]
+  key 10s master.position [0m, 2.5m, 5.5m] ease smoothstep
+}
