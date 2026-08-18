@@ -83,6 +83,11 @@ const run = async () => {
     }
     throw new Error(`Timed out waiting for: ${expression}`)
   }
+  const selectExample = id => evaluate(`(() => {
+    const select = document.querySelector('#scene-example')
+    select.value = ${JSON.stringify(id)}
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+  })()`)
 
   await Promise.all([send('Runtime.enable'), send('Network.enable'), send('Page.enable')])
   await send('Page.navigate', { url: appUrl })
@@ -111,7 +116,7 @@ const run = async () => {
   const animatedFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (animatedFrame === initialFrame) throw new Error('Canvas pixels did not change during playback')
 
-  await evaluate(`document.querySelector('[data-id="ensemble-brawl"]').click()`)
+  await selectExample('ensemble-brawl')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_ensemble_brawl'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'orbit_cam'`)
@@ -126,7 +131,7 @@ const run = async () => {
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
 
-  await evaluate(`document.querySelector('[data-id="fight-closeup"]').click()`)
+  await selectExample('fight-closeup')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'fight_coverage_closeup'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'face_impact'`)
@@ -141,7 +146,7 @@ const run = async () => {
   const repeatedImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (repeatedImpactFrame !== firstImpactFrame) throw new Error('Repeated impact-camera seek produced different pixels')
 
-  await evaluate(`document.querySelector('[data-id="calisthenics-long"]').click()`)
+  await selectExample('calisthenics-long')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'broadcast_calisthenics_390s'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '305000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`window.__SHOT_DSL_APP__.getState().currentTimeMs === 305000`)
@@ -166,7 +171,7 @@ const run = async () => {
 
   if (process.env.SCREENSHOT_PATH) {
     const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? 'cinematic-pursuit'
-    await evaluate(`document.querySelector(${JSON.stringify(`[data-id="${screenshotExample}"]`)}).click()`)
+    await selectExample(screenshotExample)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
     if (process.env.SCREENSHOT_TIME) {
       const screenshotTime = Number(process.env.SCREENSHOT_TIME)

@@ -19,14 +19,19 @@ button { color: inherit; }
 
 .app-shell { width: min(1560px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 20px; }
 .topbar, .panel-heading, .editor-footer, .section-label, .transport { display: flex; align-items: center; justify-content: space-between; }
-.topbar { margin-bottom: 18px; }
+.topbar { align-items: flex-start; margin-bottom: 18px; }
 .eyebrow { margin: 0 0 3px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .18em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 30px; line-height: 1; letter-spacing: -.05em; }
 h2 { display: inline; margin: 0; font-size: 15px; letter-spacing: -.01em; }
 .product-goal { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
 
-.status { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
+.topbar-controls { display: grid; min-width: 270px; gap: 11px; justify-items: end; }
+.scene-selector { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
+.scene-selector select { width: 210px; border: 1px solid #b9b9ae; border-radius: 3px; outline: none; padding: 7px 30px 7px 9px; color: var(--ink); background: #fafaf6; cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: 0; }
+.scene-selector select:hover { border-color: #77786f; }
+.scene-selector select:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgb(30 31 26 / 7%); }
+.status { display: flex; gap: 8px; align-items: center; margin-right: 2px; color: var(--muted); font-size: 12px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #c28a35; box-shadow: 0 0 0 4px rgb(194 138 53 / 12%); }
 .status[data-state="ready"] .status-dot { background: var(--ready); box-shadow: 0 0 0 4px rgb(43 138 99 / 12%); }
 .status[data-state="error"] .status-dot { background: var(--error); box-shadow: 0 0 0 4px rgb(182 64 53 / 12%); }
@@ -42,14 +47,6 @@ h2 { display: inline; margin: 0; font-size: 15px; letter-spacing: -.01em; }
 textarea { width: 100%; min-height: 430px; flex: 1; resize: vertical; border: 1px solid #b9b9ae; border-radius: 2px; outline: none; background: linear-gradient(transparent 23px, #e7e7df 24px) 0 0 / 100% 24px, #fff; padding: 13px 15px; color: #23241f; tab-size: 2; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 24px; white-space: pre; }
 textarea:focus { border-color: #77786f; box-shadow: 0 0 0 3px rgb(30 31 26 / 5%); }
 .editor-footer { padding: 8px 1px 0; color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; }
-.examples-block { margin-top: 18px; }
-.examples-block > p { margin-bottom: 8px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.examples { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.example-chip { display: grid; gap: 3px; min-width: 0; border: 1px solid #c9c9bf; border-radius: 3px; padding: 8px 9px; color: #55564f; background: #f3f3ed; cursor: pointer; text-align: left; }
-.example-chip:hover, .example-chip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: #fff; box-shadow: inset 3px 0 var(--accent); }
-.example-label { font-size: 10px; font-weight: 750; }
-.example-description { overflow: hidden; color: var(--muted); font-size: 9px; line-height: 1.35; text-overflow: ellipsis; }
-
 .diagnostics-section { margin-top: 17px; border-top: 1px solid var(--line); padding-top: 13px; }
 .section-label { color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 .diagnostics { min-height: 34px; max-height: 94px; margin-top: 8px; overflow: auto; }
@@ -106,9 +103,10 @@ textarea:focus { border-color: #77786f; box-shadow: 0 0 0 3px rgb(30 31 26 / 5%)
 
 @media (max-width: 540px) {
   .app-shell { width: 100%; padding: 14px 0 0; }
-  .topbar { padding: 0 14px; }
-  .status { display: none; }
+  .topbar { flex-direction: column; gap: 14px; padding: 0 14px; }
+  .topbar-controls { width: 100%; min-width: 0; }
+  .scene-selector { width: 100%; justify-content: space-between; }
+  .scene-selector select { width: min(210px, 68vw); }
   .panel { padding: 14px; }
   .timecode { display: none; }
-  .examples { grid-template-columns: 1fr; }
 }

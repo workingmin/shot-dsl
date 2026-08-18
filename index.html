@@ -15,9 +15,15 @@
           <h1>Shot DSL</h1>
           <p class="product-goal">文本驱动的拟真人物 3D 动态分镜</p>
         </div>
-        <div id="status" class="status" data-state="loading">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="status-text">正在初始化 3D 播放器…</span>
+        <div class="topbar-controls">
+          <label class="scene-selector" for="scene-example">
+            <span>场景示例</span>
+            <select id="scene-example" aria-label="选择场景示例"></select>
+          </label>
+          <div id="status" class="status" data-state="loading" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="status-text">正在初始化 3D 播放器…</span>
+          </div>
         </div>
       </header>
 
@@ -34,11 +40,6 @@
           <div class="editor-footer">
             <span>Ctrl / ⌘ + Enter：重新编译</span>
             <span id="character-count">0 chars</span>
-          </div>
-
-          <div class="examples-block">
-            <p>目标场景示例</p>
-            <div id="examples" class="examples" aria-label="ShotDSL 示例"></div>
           </div>
 
           <section class="diagnostics-section" aria-live="polite">

@@ -8,7 +8,7 @@ const elements = {
   input: document.querySelector('#dsl-input'),
   count: document.querySelector('#character-count'),
   clear: document.querySelector('#clear-button'),
-  examples: document.querySelector('#examples'),
+  sceneExample: document.querySelector('#scene-example'),
   diagnostics: document.querySelector('#diagnostics'),
   diagnosticCount: document.querySelector('#diagnostic-count'),
   canvas: document.querySelector('#scene-canvas'),
@@ -174,28 +174,24 @@ const scheduleCompile = () => {
 
 const selectExample = example => {
   activeExample = example.id
+  elements.sceneExample.value = activeExample
   elements.input.value = example.source
-  for (const button of elements.examples.querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.id === activeExample))
   setPlaying(false)
   compile()
 }
 
 for (const example of EXAMPLES) {
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.className = 'example-chip'
-  button.dataset.id = example.id
-  const label = document.createElement('span')
-  label.className = 'example-label'
-  label.textContent = example.label
-  const description = document.createElement('span')
-  description.className = 'example-description'
-  description.textContent = example.description
-  button.append(label, description)
-  button.setAttribute('aria-pressed', String(example.id === activeExample))
-  button.addEventListener('click', () => selectExample(example))
-  elements.examples.append(button)
+  const option = document.createElement('option')
+  option.value = example.id
+  option.textContent = example.label
+  option.title = example.description
+  elements.sceneExample.append(option)
 }
+
+elements.sceneExample.addEventListener('change', () => {
+  const example = EXAMPLES.find(item => item.id === elements.sceneExample.value)
+  if (example) selectExample(example)
+})
 
 elements.input.addEventListener('input', scheduleCompile)
 elements.input.addEventListener('keydown', event => {
