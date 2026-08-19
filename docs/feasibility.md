@@ -24,7 +24,7 @@ Rough.js 可以在两个场景中继续试验：
 
 ## 已验证实现
 
-当前版本已完成真人比例多人 glTF 骨骼人物、击打特写、短场景镜头覆盖、catalog 驱动的语义能力校验和四种渲染 preset：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；`impact` 相机逐帧读取拳头与头部骨骼的世界坐标并自动构图；`gaze` 在动作采样后确定性叠加头部注视。当前示例集主动聚焦 5～10 秒短场景，不承担长节目设计展示。
+当前版本已完成真人比例多人 glTF 骨骼人物、击打特写、短场景镜头覆盖、catalog 驱动的语义能力校验和四种渲染 preset：`GLTFLoader` 加载 Mesh2Motion/Quaternius CC0 humanoid，`SkeletonUtils.clone` 生成独立骨架，`AnimationMixer` 根据 Scene IR 的绝对时间采样 Clip，并在 `blend` 窗口混合前后动作。人物资产会执行脚底归零和 1.78 米身高归一；`impact` 相机逐帧读取拳头与头部骨骼的世界坐标并自动构图；`gaze` 在动作采样后确定性叠加头部注视。当前示例集主动聚焦 9～12 秒短场景，不承担长节目设计展示。
 
 Style、action、model 已统一进入纯数据 catalog。编译器会规范化兼容别名、按人物模型区分 exact / procedural / approximate / unsupported，并拒绝模型无法执行的动作。运行时不再把未知动作静默降级到 Idle。能力详情见 [ShotDSL 支持能力评估](support-matrix.md)。
 

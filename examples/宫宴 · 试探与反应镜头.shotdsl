@@ -1,0 +1,194 @@
+shotdsl 0.1
+
+scene palace_banquet_reaction_chain {
+  duration 10s
+  fps 30
+  seed 7712
+  style cinematic
+}
+
+actor ruler {
+  model "human-mannequin"
+  color #d9b45c
+  position [-1.25m, 0m, 0.2m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor envoy {
+  model "human-mannequin"
+  color ivory
+  position [1.25m, 0m, 0.2m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+actor attendant {
+  model "human-mannequin"
+  color #8f6fa8
+  position [2.6m, 0m, -1.4m]
+  rotation [0deg, -45deg, 0deg]
+}
+
+object hall_floor {
+  primitive box
+  size [10m, 0.1m, 8m]
+  color #543b36
+  position [0m, 0.05m, 0m]
+}
+
+object dais {
+  primitive box
+  size [5.6m, 0.24m, 3.2m]
+  color #704a39
+  position [0m, 0.12m, -1.25m]
+}
+
+object banquet_table {
+  primitive box
+  size [2.8m, 0.78m, 1.15m]
+  color #4c2925
+  position [0m, 0.78m, 0.2m]
+}
+
+object royal_seal {
+  primitive cylinder
+  radius 0.16m
+  height 0.2m
+  color #b38a34
+  position [0m, 0.98m, 0.2m]
+}
+
+object screen_left {
+  primitive box
+  size [2.2m, 3m, 0.12m]
+  color #8c3f33
+  position [-3.4m, 1.5m, -2.8m]
+}
+
+object screen_right {
+  primitive box
+  size [2.2m, 3m, 0.12m]
+  color #8c3f33
+  position [3.4m, 1.5m, -2.8m]
+}
+
+object lantern_left {
+  primitive cylinder
+  radius 0.18m
+  height 0.65m
+  color #d99a45
+  position [-3m, 1.8m, 0.8m]
+}
+
+object lantern_right {
+  primitive cylinder
+  radius 0.18m
+  height 0.65m
+  color #d99a45
+  position [3m, 1.8m, 0.8m]
+}
+
+camera hall_master {
+  mode lookAt
+  fov 38deg
+  position [0m, 2.4m, 6.2m]
+  target point [0m, 1m, 0m]
+}
+
+camera over_ruler {
+  mode lookAt
+  fov 31deg
+  position [-0.75m, 1.55m, 2m]
+  target actor envoy bone "head"
+}
+
+camera over_envoy {
+  mode lookAt
+  fov 31deg
+  position [0.75m, 1.55m, 2m]
+  target actor ruler bone "head"
+}
+
+camera seal_insert {
+  mode lookAt
+  fov 23deg
+  position [0.65m, 1.35m, 1.15m]
+  target object royal_seal
+}
+
+camera envoy_ecu {
+  mode follow
+  fov 24deg
+  target actor envoy bone "head"
+  offset [0.55m, 0.08m, 1.65m]
+  roll -0.5deg
+}
+
+beat formal_distance {
+  from 0s
+  to 3s
+  intent "先建立席位、侍从与桌案的权力距离，再进入越肩正反打"
+  emotion "礼貌而戒备"
+  focus actor ruler
+  continuity preserve
+}
+
+beat seal_test {
+  from 3s
+  to 7s
+  intent "以玉玺和手部动作作为试探，将对白压力转化为可见物件"
+  emotion "步步施压"
+  focus object royal_seal
+  continuity preserve
+}
+
+beat silent_reaction {
+  from 7s
+  to 10s
+  intent "用特写捕捉使者停顿，再回到主镜头确认三人关系没有改变"
+  emotion "克制的惊疑"
+  focus actor envoy bone "head"
+  continuity preserve
+}
+
+workflow professional_previs {
+  approval manual
+  failure stop
+  dispatch previs.asset-supervisor as assets scope scene mode review
+  dispatch previs.blocking-director as staging scope beat:formal_distance mode propose after assets
+  dispatch previs.action-choreographer as performance scope timeline mode propose after staging
+  dispatch previs.cinematographer as coverage scope beat:seal_test mode propose after staging
+  dispatch previs.continuity-supervisor as continuity scope scene mode review after performance,coverage
+  dispatch previs.qc as final_qc scope scene mode review after continuity
+}
+
+timeline {
+  cut 0s camera hall_master
+  play 0s actor ruler clip "idle" loop true
+  play 0s actor envoy clip "idle" loop true
+  play 0s actor attendant clip "idle" loop true
+  gaze 0s actor ruler target actor envoy bone "head" duration 10s strength 0.85
+  gaze 0s actor envoy target actor ruler bone "head" duration 10s strength 0.72
+  gaze 0s actor attendant target object royal_seal duration 10s strength 0.45
+
+  cut 1.5s camera over_ruler
+  play 1.55s actor envoy clip "talk" loop true blend 0.14s
+  cut 3s camera over_envoy
+  play 3.05s actor envoy clip "idle" loop true blend 0.14s
+  play 3.1s actor ruler clip "talk" loop true blend 0.14s
+
+  cut 4.4s camera seal_insert
+  play 4.35s actor ruler clip "reach" loop false blend 0.12s
+  key 4.4s royal_seal.rotation [0deg, 0deg, 0deg]
+  key 5.4s royal_seal.rotation [0deg, 35deg, 0deg] ease smoothstep
+  cut 5.6s camera over_ruler
+  play 5.7s actor ruler clip "idle" loop true blend 0.14s
+
+  cut 7s camera envoy_ecu
+  play 7s actor envoy clip "look-around" loop true blend 0.18s
+  key 7s envoy_ecu.offset [0.55m, 0.08m, 1.65m]
+  key 8.4s envoy_ecu.offset [0.42m, 0.05m, 1.35m] ease smoothstep
+  cut 8.7s camera hall_master
+  play 8.8s actor envoy clip "idle" loop true blend 0.16s
+  key 8.7s hall_master.position [0m, 2.4m, 6.2m]
+  key 10s hall_master.position [0m, 2.65m, 7m] ease smoothstep
+}

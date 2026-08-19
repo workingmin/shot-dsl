@@ -108,6 +108,47 @@ scene <id> {
 
 兼容输入 `rough_ink`、`storyboard`、`wire-frame`、`3d_cinematic`、`cinematic_wireframe`、`3d_cinematic_wireframe` 等会在编译期规范化，并产生 `W_STYLE_ALIAS`。Scene IR 只保存规范 style，同时用 `requestedStyle` 保留原始表达。
 
+### 创作 Beat
+
+```text
+beat <id> {
+  from <time>
+  to <time>
+  intent <quoted-string>
+  emotion <quoted-string>
+  focus <point|actor|object>
+  continuity preserve|reset
+  notes <quoted-string>
+}
+```
+
+Beat 把“为什么这样调度”作为机器可读上下文补到实体和时间轴之上。`from`、`to`、`intent` 必填；其余可选。Beat 不直接驱动播放器，而是供专业技能、审校器和编辑器理解时间范围内的戏剧目标。`focus` 与 camera target 使用相同引用语义，并在编译期校验实体类型。
+
+### 专业技能 Workflow
+
+```text
+workflow <id> {
+  approval manual|auto
+  failure stop|continue
+  dispatch <skill-id> as <dispatch-id> scope <scope> mode review|propose [after <dispatch-id>,...]
+}
+```
+
+当前技能目录：
+
+```text
+previs.asset-supervisor
+previs.blocking-director
+previs.action-choreographer
+previs.cinematographer
+previs.continuity-supervisor
+previs.qc
+```
+
+Scope 可为 `scene`、`timeline`、`beat:<id>`、`actor:<id>`、`object:<id>` 或 `camera:<id>`。每个技能只接受目录声明的 scope 和 mode。`after` 形成依赖 DAG；未知依赖、自依赖和环均为编译错误。
+
+`review` 只产生报告；`propose` 只能产生带 `requiresApproval` 的 `shotdsl-patch` 候选。包含 proposal 的 workflow 不允许 `approval auto`。v0.1 编译器只校验并生成调度契约，不调用 Agent、不执行网络请求，也不自动修改源文件。完整设计见[专业技能调度设计](professional-skill-orchestration.md)。
+
 ### 实体
 
 ```text
@@ -178,7 +219,7 @@ gaze 8s actor witness target actor detective bone "head" duration 2s
 
 `gaze` 是有持续时间的离散约束事件。时间轴按绝对时间决定是否激活，播放器在动作采样后叠加头部朝向；重复 seek 到相同时间得到相同结果。
 
-scene duration 使用绝对时间，时间轴和播放器均采用毫秒直接求值。当前产品示例聚焦 5～10 秒的短场景和镜头覆盖，不把长节目编排作为现阶段展示目标。
+scene duration 使用绝对时间，时间轴和播放器均采用毫秒直接求值。当前产品示例聚焦 9～12 秒的短场景和镜头覆盖，不把长节目编排作为现阶段展示目标。
 
 ## 类型与单位
 

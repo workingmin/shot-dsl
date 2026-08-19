@@ -1,0 +1,196 @@
+shotdsl 0.1
+
+scene forest_tracking_prop_action {
+  duration 10s
+  fps 30
+  seed 5402
+  style cinematic
+}
+
+actor scout {
+  model "game-ready-soldier"
+  color white
+  position [-4.2m, 0m, 0.4m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor partner {
+  model "game-ready-soldier"
+  color lightgray
+  position [-5.1m, 0m, -0.8m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+object forest_floor {
+  primitive box
+  size [14m, 0.12m, 8m]
+  color #465143
+  position [0m, -0.06m, 0m]
+}
+
+object ridge {
+  primitive box
+  size [14m, 1.6m, 1.4m]
+  color #50584e
+  position [0m, 0.8m, -3.6m]
+  rotation [0deg, 0deg, -3deg]
+}
+
+object tree_left {
+  primitive cylinder
+  radius 0.3m
+  height 4.5m
+  color #594634
+  position [-2.7m, 2.25m, -1.8m]
+}
+
+object tree_center {
+  primitive cylinder
+  radius 0.34m
+  height 5.2m
+  color #594634
+  position [1.2m, 2.6m, -2.2m]
+}
+
+object tree_right {
+  primitive cylinder
+  radius 0.28m
+  height 4.2m
+  color #594634
+  position [4.1m, 2.1m, -1.3m]
+}
+
+object marker_stone {
+  primitive box
+  size [0.45m, 0.3m, 0.38m]
+  color #9aa09a
+  position [0.8m, 0.15m, 0.7m]
+  rotation [0deg, 18deg, 0deg]
+}
+
+object trail_token {
+  primitive cylinder
+  radius 0.08m
+  height 0.02m
+  color #d5b34a
+  position [0.8m, 0.35m, 0.7m]
+  rotation [90deg, 0deg, 0deg]
+}
+
+camera forest_establish {
+  mode lookAt
+  fov 39deg
+  position [0m, 3m, 9.2m]
+  target point [0m, 1m, -0.2m]
+  roll -0.7deg
+}
+
+camera shoulder_follow {
+  mode follow
+  fov 42deg
+  target actor scout bone "head"
+  offset [-2.5m, 0.35m, 3m]
+  shake 0.014m
+}
+
+camera low_side {
+  mode follow
+  fov 37deg
+  target actor scout bone "head"
+  offset [-2.8m, -0.35m, 0.9m]
+  shake 0.02m
+  roll -1deg
+}
+
+camera token_insert {
+  mode lookAt
+  fov 23deg
+  position [1.25m, 0.85m, 1.35m]
+  target object trail_token
+}
+
+camera long_lens_exit {
+  mode lookAt
+  fov 27deg
+  position [7.8m, 1.7m, 4.4m]
+  target point [4.2m, 1.05m, 0m]
+}
+
+beat forest_approach {
+  from 0s
+  to 4.5s
+  intent "建立山林路径后用肩后和低侧机位跟随两人接近标记石"
+  emotion "谨慎搜索"
+  focus actor scout
+  continuity preserve
+}
+
+beat trace_discovery {
+  from 4.5s
+  to 7.2s
+  intent "运动突然停止，以标记物特写和伸手动作确认发现线索"
+  emotion "警觉转为确认"
+  focus object trail_token
+  continuity preserve
+}
+
+beat pursuit_exit {
+  from 7.2s
+  to 10s
+  intent "从线索切回人物判断，再用长焦压缩空间观察两人继续追踪"
+  emotion "目标明确、重新加速"
+  focus actor partner bone "head"
+  continuity preserve
+}
+
+workflow professional_previs {
+  approval manual
+  failure stop
+  dispatch previs.asset-supervisor as assets scope scene mode review
+  dispatch previs.blocking-director as staging scope beat:forest_approach mode propose after assets
+  dispatch previs.action-choreographer as performance scope timeline mode propose after staging
+  dispatch previs.cinematographer as coverage scope beat:trace_discovery mode propose after staging
+  dispatch previs.continuity-supervisor as continuity scope scene mode review after performance,coverage
+  dispatch previs.qc as final_qc scope scene mode review after continuity
+}
+
+timeline {
+  cut 0s camera forest_establish
+  play 0s actor scout clip "idle" loop true
+  play 0s actor partner clip "idle" loop true
+  play 0.65s actor scout clip "walk" loop true blend 0.2s
+  play 0.85s actor partner clip "walk" loop true blend 0.2s
+  key 0.65s scout.position [-4.2m, 0m, 0.4m]
+  key 3.1s scout.position [-1.5m, 0m, 0.4m] ease smoothstep
+  key 0.85s partner.position [-5.1m, 0m, -0.8m]
+  key 3.35s partner.position [-2.45m, 0m, -0.8m] ease smoothstep
+
+  cut 1.4s camera shoulder_follow
+  key 1.4s shoulder_follow.shake 0.014m
+  key 3.2s shoulder_follow.shake 0.028m ease smoothstep
+  play 2.5s actor scout clip "run" loop true speed 1.05 blend 0.16s
+  play 2.7s actor partner clip "run" loop true speed 1.03 blend 0.16s
+  key 4.35s scout.position [0.2m, 0m, 0.4m] ease smoothstep
+  key 4.55s partner.position [-0.8m, 0m, -0.8m] ease smoothstep
+  cut 3.25s camera low_side
+
+  cut 4.55s camera token_insert
+  play 4.5s actor scout clip "idle" loop true blend 0.14s
+  play 4.6s actor partner clip "idle" loop true blend 0.14s
+  play 4.8s actor scout clip "reach" loop false blend 0.12s
+  gaze 4.5s actor scout target object trail_token duration 2.4s strength 0.95
+  gaze 4.6s actor partner target object trail_token duration 2.3s strength 0.8
+  key 4.55s trail_token.rotation [90deg, 0deg, 0deg]
+  key 5.9s trail_token.rotation [90deg, 45deg, 0deg] ease smoothstep
+
+  cut 6.15s camera shoulder_follow
+  play 6.2s actor scout clip "look-around" loop true blend 0.14s
+  play 6.25s actor partner clip "look-around" loop true blend 0.14s
+  cut 7.2s camera long_lens_exit
+  play 7.25s actor scout clip "run" loop true blend 0.16s
+  play 7.35s actor partner clip "run" loop true blend 0.16s
+  key 7.2s scout.position [0.2m, 0m, 0.4m]
+  key 10s scout.position [5m, 0m, 0.4m] ease smoothstep
+  key 7.2s partner.position [-0.8m, 0m, -0.8m]
+  key 10s partner.position [4m, 0m, -0.8m] ease smoothstep
+}

@@ -2,6 +2,7 @@
 
 - [ShotDSL v0.1 语言规范](shotdsl-v0.1.md)：语法、Scene IR、诊断和时间轴语义。
 - [ShotDSL 支持能力评估](support-matrix.md)：style、动作、人物模型的真实支持矩阵及边界。
+- [专业技能调度设计](professional-skill-orchestration.md)：beat 创作语义、专业技能目录、依赖 DAG、patch 审批边界与实施顺序。
 - [人物资产数据增强方案](asset-data-enhancement.md)：选角画像、授权、GLB 审计、viseme、动作重定向和入库门槛。
 - [技术可行性与实施路线](feasibility.md)：已验证架构、风险和后续工程方向。
 

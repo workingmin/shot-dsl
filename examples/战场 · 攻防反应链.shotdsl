@@ -1,0 +1,196 @@
+shotdsl 0.1
+
+scene battlefield_attack_response_chain {
+  duration 9s
+  fps 24
+  seed 3451
+  style cinematic
+}
+
+actor vanguard {
+  model "human-mannequin"
+  color ivory
+  position [-0.4m, 0m, 0m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor raider {
+  model "human-mannequin"
+  color #844a45
+  position [0.35m, 0m, 0m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+actor witness {
+  model "human-mannequin"
+  color #6c7881
+  position [2.8m, 0m, -1.7m]
+  rotation [0deg, -55deg, 0deg]
+}
+
+object battlefield_floor {
+  primitive box
+  size [12m, 0.12m, 8m]
+  color #534b45
+  position [0m, -0.06m, 0m]
+}
+
+object ruined_wall {
+  primitive box
+  size [7m, 2.1m, 0.4m]
+  color #6a625a
+  position [0m, 1.05m, -3.4m]
+  rotation [0deg, -8deg, 0deg]
+}
+
+object banner_left {
+  primitive box
+  size [0.65m, 2.5m, 0.08m]
+  color #71362f
+  position [-3.5m, 2m, -2.6m]
+  rotation [0deg, 0deg, -8deg]
+}
+
+object banner_right {
+  primitive box
+  size [0.65m, 2.5m, 0.08m]
+  color #71362f
+  position [3.6m, 2m, -2.7m]
+  rotation [0deg, 0deg, 7deg]
+}
+
+object brazier {
+  primitive cone
+  radius 0.38m
+  height 0.7m
+  color #d36d35
+  position [-2.5m, 0.35m, 1.5m]
+}
+
+camera battle_master {
+  mode lookAt
+  fov 40deg
+  position [0m, 2.2m, 6.4m]
+  target point [0m, 1.05m, -0.2m]
+  shake 0.006m
+}
+
+camera vanguard_shoulder {
+  mode follow
+  fov 33deg
+  target actor vanguard bone "head"
+  offset [-1.55m, 0.1m, 2.6m]
+  shake 0.012m
+}
+
+camera first_impact {
+  mode impact
+  fov 29deg
+  attacker actor vanguard bone "hand_l"
+  victim actor raider bone "head"
+  distance 1.42m
+  side right
+  focus 0.7
+  shake 0.02m
+  roll -1.2deg
+}
+
+camera raider_shoulder {
+  mode follow
+  fov 34deg
+  target actor raider bone "head"
+  offset [1.5m, 0.08m, 2.55m]
+  shake 0.014m
+}
+
+camera aftermath_orbit {
+  mode orbit
+  fov 41deg
+  target actor vanguard
+  radius 5.6m
+  azimuth -28deg
+  elevation 18deg
+}
+
+beat threat_read {
+  from 0s
+  to 1.7s
+  intent "先用主镜头确认两名对手、见证者和废墟背景，再收紧到攻击者肩后"
+  emotion "短暂对峙"
+  focus actor vanguard
+  continuity preserve
+}
+
+beat first_contact {
+  from 1.7s
+  to 3.4s
+  intent "攻击、命中与受击反应必须围绕同一接触峰值组织，而不是随机快速切镜"
+  emotion "突然爆发"
+  focus actor raider bone "head"
+  continuity preserve
+}
+
+beat counter_pressure {
+  from 3.4s
+  to 6.5s
+  intent "从受击者肩后发动反击，并让见证者的视线维持空间方向"
+  emotion "攻守逆转"
+  focus actor raider
+  continuity preserve
+}
+
+beat aftermath {
+  from 6.5s
+  to 9s
+  intent "倒地后放慢剪辑并环绕拉开，重新显示胜负和环境关系"
+  emotion "冲突结束后的余震"
+  focus point [0m, 1m, 0m]
+  continuity preserve
+}
+
+workflow professional_previs {
+  approval manual
+  failure stop
+  dispatch previs.asset-supervisor as assets scope scene mode review
+  dispatch previs.blocking-director as staging scope beat:threat_read mode propose after assets
+  dispatch previs.action-choreographer as performance scope timeline mode propose after staging
+  dispatch previs.cinematographer as coverage scope beat:first_contact mode propose after staging
+  dispatch previs.continuity-supervisor as continuity scope scene mode review after performance,coverage
+  dispatch previs.qc as final_qc scope scene mode review after continuity
+}
+
+timeline {
+  cut 0s camera battle_master
+  play 0s actor vanguard clip "guard" loop true
+  play 0s actor raider clip "guard" loop true
+  play 0s actor witness clip "idle" loop true
+  gaze 0s actor witness target actor vanguard bone "head" duration 9s strength 0.72
+
+  cut 1.25s camera vanguard_shoulder
+  play 1.8s actor vanguard clip "punch" loop false blend 0.1s
+  key 1.8s vanguard.position [-0.4m, 0m, 0m]
+  key 1.82s vanguard.position [-0.4m, 0.14m, 0m] ease hold
+  cut 2.092s camera first_impact
+  play 2.1s actor raider clip "hit-face" loop false blend 0.04s
+  key 2.55s vanguard.position [-0.4m, 0.14m, 0m] ease hold
+  key 2.57s vanguard.position [-0.4m, 0m, 0m] ease hold
+
+  cut 2.8s camera battle_master
+  play 2.85s actor vanguard clip "guard" loop true blend 0.14s
+  play 3.15s actor raider clip "guard" loop true blend 0.14s
+  cut 3.7s camera raider_shoulder
+  play 4.05s actor raider clip "hook" loop false blend 0.1s
+  play 4.28s actor vanguard clip "hit-face" loop false blend 0.06s
+
+  cut 5s camera vanguard_shoulder
+  play 5.15s actor vanguard clip "cross" loop false blend 0.1s
+  play 5.32s actor raider clip "hit-face" loop false blend 0.05s
+  cut 6.2s camera battle_master
+  play 6.35s actor raider clip "fall" loop false blend 0.1s
+  cut 7s camera aftermath_orbit
+  play 7.05s actor vanguard clip "cooldown" loop true blend 0.18s
+  key 7s aftermath_orbit.azimuth -28deg
+  key 9s aftermath_orbit.azimuth 18deg ease smoothstep
+  key 7s aftermath_orbit.radius 5.6m
+  key 9s aftermath_orbit.radius 6.8m ease smoothstep
+}

@@ -27,11 +27,11 @@ npm run assets:audit -- --json
 
 | Target | 外观 | 必需场景 |
 |---|---|---|
-| `business-male-adult` | 成年男性、商务服装 | 办公室对话 |
-| `business-female-adult` | 成年女性、商务服装 | 办公室对话 |
-| `traditional-male-older-adult` | 老年男性、传统/日常服装 | 庭院对话 |
-| `casual-male-teen` | 青少年男性、日常服装 | 庭院对话 |
-| `casual-female-adult` | 成年女性、日常服装 | 悬疑室内 |
+| `business-male-adult` | 成年男性、商务服装 | 密室分析员 / 现代剧情预演 |
+| `business-female-adult` | 成年女性、商务服装 | 密室审讯 / 现代剧情预演 |
+| `traditional-male-older-adult` | 老年男性、传统/日常服装 | 非遗手艺人 / 宫宴角色 |
+| `casual-male-teen` | 青少年男性、日常服装 | 四人群像 / 道具传递 |
+| `casual-female-adult` | 成年女性、日常服装 | 面馆顾客 / 四人群像 |
 
 同一人物族应共享骨架、UV 和面部 Blendshape 命名。服装优先作为蒙皮附件或材质/网格变体，不复制整套动作数据。
 
@@ -141,6 +141,6 @@ src/shotdsl/catalog.js    运行能力与 alias/preset
 
 ## 实施顺序
 
-第一批只服务当前 7 个短场景：先补办公室两名商务人物、庭院老年/青少年人物和雨夜女性人物，再补统一 dialogue 动作包与 viseme。第二批补战斗人物的同骨架拳击/受击动作。第三批才引入手部触物、脚底接触 IK 和更大规模选角库。
+第一批服务当前 7 个专业预演场景：先补面馆、宫宴、密室、四人群像和非遗场景所需的年龄、服装与身份差异，再补统一 dialogue 动作包与 viseme。第二批补战斗人物的同骨架拳击/受击动作。第三批引入手部触物、脚底接触 IK 和更大规模选角库。
 
 这一顺序避免资产数量先膨胀、能力和授权却不可验证，也与当前短镜头产品范围一致。

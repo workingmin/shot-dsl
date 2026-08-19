@@ -1,0 +1,197 @@
+shotdsl 0.1
+
+scene four_actor_prop_reaction_chain {
+  duration 12s
+  fps 30
+  seed 6183
+  style cinematic
+}
+
+actor lead {
+  model "human-mannequin"
+  color ivory
+  position [-1.25m, 0m, 0.35m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor ally {
+  model "human-mannequin"
+  color #8ea0ad
+  position [-2.7m, 0m, -0.6m]
+  rotation [0deg, 65deg, 0deg]
+}
+
+actor rival {
+  model "human-mannequin"
+  color #884d52
+  position [1.25m, 0m, 0.35m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+actor healer {
+  model "human-mannequin"
+  color #78917b
+  position [2.7m, 0m, -0.6m]
+  rotation [0deg, -65deg, 0deg]
+}
+
+object terrace_floor {
+  primitive box
+  size [10m, 0.1m, 7m]
+  color #667078
+  position [0m, 0.05m, 0m]
+}
+
+object parapet {
+  primitive box
+  size [10m, 1m, 0.3m]
+  color #7f8a91
+  position [0m, 0.5m, -3.2m]
+}
+
+object satchel {
+  primitive box
+  size [0.42m, 0.34m, 0.18m]
+  color #5b3c2e
+  position [1.05m, 0.95m, 0.35m]
+}
+
+object jade_vial {
+  primitive cylinder
+  radius 0.1m
+  height 0.3m
+  color #77cbb6
+  position [0.82m, 1.05m, 0.35m]
+}
+
+object pillar_left {
+  primitive cylinder
+  radius 0.28m
+  height 3m
+  color #8f7b68
+  position [-4m, 1.5m, -2m]
+}
+
+object pillar_right {
+  primitive cylinder
+  radius 0.28m
+  height 3m
+  color #8f7b68
+  position [4m, 1.5m, -2m]
+}
+
+camera ensemble_master {
+  mode lookAt
+  fov 40deg
+  position [0m, 2.6m, 7m]
+  target point [0m, 1m, 0m]
+}
+
+camera rival_pair {
+  mode lookAt
+  fov 34deg
+  position [2.8m, 1.65m, 3.2m]
+  target point [0.6m, 1.1m, 0.2m]
+}
+
+camera vial_insert {
+  mode lookAt
+  fov 23deg
+  position [1.15m, 1.45m, 1.2m]
+  target object jade_vial
+}
+
+camera lead_close {
+  mode follow
+  fov 29deg
+  target actor lead bone "head"
+  offset [-0.55m, 0.08m, 1.85m]
+}
+
+camera healer_close {
+  mode follow
+  fov 30deg
+  target actor healer bone "head"
+  offset [0.45m, 0.1m, 1.9m]
+}
+
+camera group_orbit {
+  mode orbit
+  fov 40deg
+  target actor lead
+  radius 5.4m
+  azimuth -25deg
+  elevation 16deg
+}
+
+beat group_balance {
+  from 0s
+  to 3.5s
+  intent "用四人主镜头建立两侧阵营和人物距离，避免群像只剩一排站位"
+  emotion "相互戒备"
+  focus point [0m, 1m, 0m]
+  continuity preserve
+}
+
+beat vial_handoff {
+  from 3.5s
+  to 7.4s
+  intent "让药瓶在对手、主角和镜头之间形成清楚的传递路径"
+  emotion "条件交换"
+  focus object jade_vial
+  continuity preserve
+}
+
+beat reaction_wave {
+  from 7.4s
+  to 12s
+  intent "依次展示主角判断、医者确认和同伴警觉，最后回到运动群像"
+  emotion "怀疑转为暂时接受"
+  focus actor lead bone "head"
+  continuity preserve
+}
+
+workflow professional_previs {
+  approval manual
+  failure stop
+  dispatch previs.asset-supervisor as assets scope scene mode review
+  dispatch previs.blocking-director as staging scope beat:group_balance mode propose after assets
+  dispatch previs.action-choreographer as performance scope timeline mode propose after staging
+  dispatch previs.cinematographer as coverage scope beat:vial_handoff mode propose after staging
+  dispatch previs.continuity-supervisor as continuity scope scene mode review after performance,coverage
+  dispatch previs.qc as final_qc scope scene mode review after continuity
+}
+
+timeline {
+  cut 0s camera ensemble_master
+  play 0s actor lead clip "idle" loop true
+  play 0s actor ally clip "idle" loop true
+  play 0s actor rival clip "idle" loop true
+  play 0s actor healer clip "idle" loop true
+  gaze 0s actor lead target actor rival bone "head" duration 8s strength 0.75
+  gaze 0s actor rival target actor lead bone "head" duration 8s strength 0.75
+  gaze 0s actor ally target object jade_vial duration 12s strength 0.5
+  gaze 0s actor healer target object jade_vial duration 12s strength 0.8
+
+  cut 2s camera rival_pair
+  play 2.1s actor rival clip "talk" loop true blend 0.14s
+  cut 3.6s camera vial_insert
+  play 3.55s actor rival clip "reach" loop false blend 0.12s
+  key 3.6s jade_vial.position [0.82m, 1.05m, 0.35m]
+  key 5.1s jade_vial.position [0m, 1.05m, 0.35m] ease smoothstep
+
+  cut 5.2s camera lead_close
+  play 5.25s actor rival clip "idle" loop true blend 0.14s
+  play 5.3s actor lead clip "reach" loop false blend 0.12s
+  key 6.5s jade_vial.position [-0.82m, 1.05m, 0.35m] ease smoothstep
+
+  cut 7.4s camera lead_close
+  play 7.45s actor lead clip "look-around" loop true blend 0.16s
+  cut 8.65s camera healer_close
+  play 8.7s actor healer clip "talk" loop true blend 0.14s
+  cut 10s camera group_orbit
+  play 10.05s actor lead clip "idle" loop true blend 0.14s
+  play 10.05s actor healer clip "idle" loop true blend 0.14s
+  key 10s group_orbit.azimuth -25deg
+  key 12s group_orbit.azimuth 18deg ease smoothstep
+}

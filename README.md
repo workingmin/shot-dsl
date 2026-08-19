@@ -16,7 +16,8 @@
 - 确定性手持抖动、镜头 roll、骨骼跟拍和击打接触特写；
 - Catalog 驱动的 style/action/model 别名规范化、模型级动作能力诊断和无静默 Idle 降级；
 - `talk` / `reach` / `look-around` 表演动作和按 point/entity/bone 定位的确定性 `gaze` 约束；
-- 7 个经过收敛的短场景示例，覆盖游戏角色追踪、拳击覆盖、群体调度、办公室对话、庭院对话、悬疑特写和走廊紧张跟拍。
+- beat 驱动的戏剧意图描述，以及资产、场面调度、动作、摄影、连续性和 QC 六类专业技能调度契约；
+- 7 个 beat 驱动的专业预演场景，覆盖面馆多机位空间连续性、宫宴微反应、密室线索揭示、四人道具传递、非遗表演、战场攻防链和山林追踪。
 
 已完成的静态线稿原型归档在远端分支：
 
@@ -68,7 +69,7 @@ npm start
 
 - `npm run dev` 会自动同步目录，刷新页面即可看到变化；
 - `npm run build` 会重新扫描目录，并把示例文件和自动生成的清单写入 `dist/examples/`；
-- 默认示例是 `游戏角色 · 追踪镜头.shotdsl`，删除它后会使用按中文文件名排序的第一个示例。
+- 默认示例是 `山林 · 追踪与道具动作.shotdsl`，删除它后会使用按中文文件名排序的第一个示例。
 
 完整检查包括人物资产元数据/GLB 审计、语言编译与时间轴单元测试；浏览器烟测会验证 glTF 加载、蒙皮人物数量、无 fallback、播放、任意 seek、camera cut、错误诊断和 PNG 画布：
 
@@ -94,7 +95,8 @@ npm run smoke
 flowchart LR
     A[用户自然语言：镜头描述] --> B[LLM 翻译层<br/>注入 ShotDSL 规范、样例和资产目录]
     B --> C[ShotDSL 文本<br/>实体、时间轴 key、相机 mode、动作 clip]
-    C --> D[Parser + Semantic Compiler<br/>语法诊断、引用校验、单位归一、时间排序]
+    C --> O[专业技能调度契约<br/>beat、scope、依赖、review / propose]
+    O --> D[Parser + Semantic Compiler<br/>语法诊断、引用校验、单位归一、时间排序]
     D --> E[Scene IR<br/>确定性的 JSON 关键帧与事件]
     E --> F[Timeline Engine<br/>lerp / quaternion slerp / hold / cut]
     F --> G[Three.js Player]
@@ -126,6 +128,7 @@ flowchart LR
 - [技术可行性与实施路线](docs/feasibility.md)
 - [ShotDSL v0.1 草案](docs/shotdsl-v0.1.md)
 - [ShotDSL 支持能力评估](docs/support-matrix.md)
+- [专业技能调度设计](docs/professional-skill-orchestration.md)
 - [人物资产数据增强方案](docs/asset-data-enhancement.md)
 
 ## 建议实施顺序

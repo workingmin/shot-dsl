@@ -20,6 +20,11 @@ import {
   resolveModel,
   resolveStyle
 } from './catalog.js'
+import {
+  PROFESSIONAL_SKILL_SCHEMA_VERSION,
+  resolveProfessionalSkill,
+  skillContractForDispatch
+} from './skills.js'
 
 const SUPPORTED_VERSION = '0.1'
 export const SUPPORTED_CLIPS = SUPPORTED_ACTIONS
@@ -67,7 +72,7 @@ const splitBlocks = (source, diagnostics) => {
     }
 
     if (!active) {
-      const opening = text.match(/^(scene|actor|object|light|camera)(?:\s+([A-Za-z_][\w-]*))\s*\{$|^(timeline)\s*\{$/)
+      const opening = text.match(/^(scene|actor|object|light|camera|beat|workflow)(?:\s+([A-Za-z_][\w-]*))\s*\{$|^(timeline)\s*\{$/)
       if (!opening) {
         diagnostics.push(diagnostic('E_SYNTAX', `Expected a block opening, received '${text}'`, lineNumber))
         continue
@@ -170,6 +175,43 @@ const parseScene = (block, diagnostics) => {
     seed: Math.trunc(fields.seed ?? 1),
     style: resolvedStyle?.id ?? requestedStyle,
     ...(resolvedStyle?.alias ? { requestedStyle } : {})
+  }
+}
+
+const parseBeat = (block, scene, entities, diagnostics) => {
+  const fields = readFields(block, {
+    from: raw => parseTime(raw, scene.fps),
+    to: raw => parseTime(raw, scene.fps),
+    intent: parseString,
+    emotion: parseString,
+    focus: parseTarget,
+    continuity: parseIdentifier,
+    notes: parseString
+  }, diagnostics)
+  if (fields.from === undefined || fields.to === undefined) {
+    diagnostics.push(diagnostic('E_BEAT_RANGE', `Beat '${block.id}' requires from and to`, block.line))
+  } else {
+    if (fields.from < 0 || fields.to > scene.durationMs) diagnostics.push(diagnostic('E_BEAT_RANGE', `Beat '${block.id}' is outside scene duration`, block.line))
+    if (fields.to <= fields.from) diagnostics.push(diagnostic('E_BEAT_RANGE', `Beat '${block.id}' must end after it starts`, block.line))
+  }
+  if (!fields.intent) diagnostics.push(diagnostic('E_BEAT_INTENT', `Beat '${block.id}' requires a quoted intent`, block.line))
+  if (fields.continuity && !['preserve', 'reset'].includes(fields.continuity)) {
+    diagnostics.push(diagnostic('E_BEAT_CONTINUITY', `Beat '${block.id}' continuity must be preserve or reset`, block.line))
+  }
+  if (fields.focus?.kind === 'entity') {
+    const target = entities[fields.focus.entityId]
+    if (!target) diagnostics.push(diagnostic('E_UNKNOWN_TARGET', `Beat '${block.id}' focuses unknown entity '${fields.focus.entityId}'`, block.line))
+    else if (target.kind !== fields.focus.entityKind) diagnostics.push(diagnostic('E_TARGET_KIND', `Beat '${block.id}' expects ${fields.focus.entityKind} '${fields.focus.entityId}', received ${target.kind}`, block.line))
+  }
+  return {
+    id: block.id,
+    fromMs: fields.from ?? 0,
+    toMs: fields.to ?? scene.durationMs,
+    intent: fields.intent ?? '',
+    emotion: fields.emotion ?? '',
+    focus: fields.focus ?? null,
+    continuity: fields.continuity ?? 'preserve',
+    notes: fields.notes ?? ''
   }
 }
 
@@ -441,6 +483,105 @@ const validateReferences = (entities, diagnostics) => {
   }
 }
 
+const parseWorkflowScope = (raw, beats, entities, line, diagnostics) => {
+  if (raw === 'scene' || raw === 'timeline') return { kind: raw }
+  const match = raw.match(/^(beat|actor|object|camera):([A-Za-z_][\w-]*)$/)
+  if (!match) {
+    diagnostics.push(diagnostic('E_WORKFLOW_SCOPE', `Invalid workflow scope '${raw}'`, line))
+    return { kind: 'invalid', id: raw }
+  }
+  const [, kind, id] = match
+  if (kind === 'beat' && !beats[id]) diagnostics.push(diagnostic('E_UNKNOWN_BEAT', `Workflow targets unknown beat '${id}'`, line))
+  if (kind !== 'beat' && entities[id]?.kind !== kind) diagnostics.push(diagnostic('E_WORKFLOW_SCOPE', `Workflow targets unknown ${kind} '${id}'`, line))
+  return { kind, id }
+}
+
+const workflowHasCycle = dispatches => {
+  const dependencies = new Map(dispatches.map(item => [item.id, item.after]))
+  const visiting = new Set()
+  const visited = new Set()
+  const visit = id => {
+    if (visiting.has(id)) return true
+    if (visited.has(id)) return false
+    visiting.add(id)
+    for (const dependency of dependencies.get(id) ?? []) {
+      if (dependencies.has(dependency) && visit(dependency)) return true
+    }
+    visiting.delete(id)
+    visited.add(id)
+    return false
+  }
+  return dispatches.some(item => visit(item.id))
+}
+
+const compileWorkflow = (blocks, beats, entities, diagnostics) => {
+  if (!blocks.length) return null
+  if (blocks.length > 1) diagnostics.push(diagnostic('E_WORKFLOW_COUNT', `Expected at most one workflow block, found ${blocks.length}`, blocks[1].line))
+  const block = blocks[0]
+  let approval = 'manual'
+  let failure = 'stop'
+  let approvalSeen = false
+  let failureSeen = false
+  const dispatches = []
+  const dispatchIds = new Set()
+
+  for (const entry of block.lines) {
+    if (entry.text.startsWith('approval ')) {
+      if (approvalSeen) diagnostics.push(diagnostic('E_DUPLICATE_FIELD', "Field 'approval' is declared more than once", entry.line))
+      approvalSeen = true
+      approval = entry.text.slice('approval '.length).trim()
+      if (!['manual', 'auto'].includes(approval)) diagnostics.push(diagnostic('E_WORKFLOW_APPROVAL', 'Workflow approval must be manual or auto', entry.line))
+      continue
+    }
+    if (entry.text.startsWith('failure ')) {
+      if (failureSeen) diagnostics.push(diagnostic('E_DUPLICATE_FIELD', "Field 'failure' is declared more than once", entry.line))
+      failureSeen = true
+      failure = entry.text.slice('failure '.length).trim()
+      if (!['stop', 'continue'].includes(failure)) diagnostics.push(diagnostic('E_WORKFLOW_FAILURE', 'Workflow failure must be stop or continue', entry.line))
+      continue
+    }
+
+    const match = entry.text.match(/^dispatch\s+([A-Za-z_][\w.-]*)\s+as\s+([A-Za-z_][\w-]*)\s+scope\s+(\S+)\s+mode\s+(review|propose)(?:\s+after\s+([A-Za-z_][\w-]*(?:\s*,\s*[A-Za-z_][\w-]*)*))?$/)
+    if (!match) {
+      diagnostics.push(diagnostic('E_DISPATCH_SYNTAX', `Invalid workflow statement '${entry.text}'`, entry.line))
+      continue
+    }
+    const [, skillId, id, rawScope, mode, rawAfter = ''] = match
+    const after = rawAfter ? rawAfter.split(',').map(value => value.trim()) : []
+    const scope = parseWorkflowScope(rawScope, beats, entities, entry.line, diagnostics)
+    const skill = resolveProfessionalSkill(skillId)
+    if (!skill) diagnostics.push(diagnostic('E_UNKNOWN_SKILL', `Unknown professional skill '${skillId}'`, entry.line))
+    else {
+      if (!skill.modes.includes(mode)) diagnostics.push(diagnostic('E_SKILL_MODE', `Skill '${skillId}' does not support mode '${mode}'`, entry.line))
+      if (!skill.scopes.includes(scope.kind)) diagnostics.push(diagnostic('E_SKILL_SCOPE', `Skill '${skillId}' does not support scope '${scope.kind}'`, entry.line))
+    }
+    if (dispatchIds.has(id)) diagnostics.push(diagnostic('E_DUPLICATE_DISPATCH', `Dispatch '${id}' is declared more than once`, entry.line))
+    dispatchIds.add(id)
+    dispatches.push({ id, skillId, skill, mode, scope, after, line: entry.line })
+  }
+
+  for (const dispatch of dispatches) {
+    for (const dependency of dispatch.after) {
+      if (dependency === dispatch.id) diagnostics.push(diagnostic('E_WORKFLOW_CYCLE', `Dispatch '${dispatch.id}' cannot depend on itself`, dispatch.line))
+      else if (!dispatchIds.has(dependency)) diagnostics.push(diagnostic('E_UNKNOWN_DISPATCH', `Dispatch '${dispatch.id}' depends on unknown dispatch '${dependency}'`, dispatch.line))
+    }
+  }
+  if (workflowHasCycle(dispatches)) diagnostics.push(diagnostic('E_WORKFLOW_CYCLE', `Workflow '${block.id}' contains a dependency cycle`, block.line))
+  if (approval === 'auto' && dispatches.some(item => item.mode === 'propose')) {
+    diagnostics.push(diagnostic('E_WORKFLOW_APPROVAL', 'Proposal skills require manual approval before their ShotDSL patches can be applied', block.line))
+  }
+
+  return {
+    schemaVersion: PROFESSIONAL_SKILL_SCHEMA_VERSION,
+    id: block.id,
+    approval,
+    failure,
+    dispatches: dispatches
+      .filter(item => item.skill)
+      .map(item => skillContractForDispatch(item.skill, item))
+  }
+}
+
 export const compileShotDSL = source => {
   const diagnostics = []
   const { version, blocks } = splitBlocks(source, diagnostics)
@@ -454,10 +595,16 @@ export const compileShotDSL = source => {
     entities[block.id] = parseEntity(block, diagnostics)
   }
   validateReferences(entities, diagnostics)
+  const beats = {}
+  for (const block of blocks.filter(item => item.kind === 'beat')) {
+    if (beats[block.id]) { diagnostics.push(diagnostic('E_DUPLICATE_BEAT', `Beat '${block.id}' is declared more than once`, block.line)); continue }
+    beats[block.id] = parseBeat(block, scene, entities, diagnostics)
+  }
   const { tracks, events } = compileTimeline(blocks.filter(block => block.kind === 'timeline'), scene, entities, diagnostics)
+  const workflow = compileWorkflow(blocks.filter(block => block.kind === 'workflow'), beats, entities, diagnostics)
   if (!Object.values(entities).some(entity => entity.kind === 'camera')) diagnostics.push(diagnostic('E_CAMERA_REQUIRED', 'At least one camera is required', 1))
   if (!events.some(event => event.type === 'cameraCut')) diagnostics.push(diagnostic('E_INITIAL_CUT', 'Timeline requires at least one camera cut', 1))
 
-  const ir = { version, scene, entities, tracks, events }
+  const ir = { version, scene, entities, beats, tracks, events, workflow }
   return { ok: diagnostics.every(item => item.severity !== 'error'), diagnostics, ir }
 }

@@ -1,0 +1,198 @@
+shotdsl 0.1
+
+scene noodle_shop_spatial_coverage {
+  duration 12s
+  fps 30
+  seed 4207
+  style cinematic-outline
+}
+
+actor owner {
+  model "human-mannequin"
+  color wheat
+  position [-1.1m, 0m, 0.8m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor customer {
+  model "human-mannequin"
+  color lightgray
+  position [4m, 0m, 1.8m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+actor cook {
+  model "human-mannequin"
+  color tan
+  position [1.8m, 0m, -2.35m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+object floor {
+  primitive box
+  size [10m, 0.08m, 8m]
+  color #6f6253
+  position [0m, 0.04m, 0m]
+}
+
+object back_wall {
+  primitive box
+  size [10m, 3.2m, 0.16m]
+  color #b9a78d
+  position [0m, 1.6m, -3.8m]
+}
+
+object left_window {
+  primitive box
+  size [0.12m, 2.2m, 4.5m]
+  color #7094a3
+  position [-4.85m, 1.55m, 0m]
+}
+
+object kitchen_counter {
+  primitive box
+  size [5.4m, 1.05m, 0.9m]
+  color #574338
+  position [0m, 0.525m, -2.25m]
+}
+
+object menu_board {
+  primitive box
+  size [2.8m, 1.1m, 0.06m]
+  color #2f3933
+  position [-1.2m, 2.25m, -3.68m]
+}
+
+object window_table {
+  primitive box
+  size [0.7m, 0.82m, 4.6m]
+  color #735640
+  position [-4.15m, 0.82m, 0m]
+}
+
+object dining_table {
+  primitive box
+  size [2m, 0.72m, 1.2m]
+  color #6e5038
+  position [-1.8m, 0.72m, 2.15m]
+}
+
+object checkout {
+  primitive box
+  size [1.7m, 1.05m, 1m]
+  color #4e4037
+  position [2.9m, 0.525m, -1.8m]
+}
+
+object order_token {
+  primitive cylinder
+  radius 0.1m
+  height 0.025m
+  color #d7ba64
+  position [0.15m, 1.07m, 0.45m]
+  rotation [90deg, 0deg, 0deg]
+}
+
+camera dining_master {
+  mode lookAt
+  fov 42deg
+  position [0m, 2.8m, 7.6m]
+  target point [0m, 1m, 0m]
+}
+
+camera entrance_checkout {
+  mode lookAt
+  fov 36deg
+  position [5.4m, 2.1m, 4.2m]
+  target point [1.6m, 1m, 0.2m]
+}
+
+camera window_reverse {
+  mode lookAt
+  fov 34deg
+  position [-4.4m, 1.65m, 1.4m]
+  target actor owner bone "head"
+}
+
+camera token_insert {
+  mode lookAt
+  fov 25deg
+  position [0.8m, 1.45m, 1.4m]
+  target object order_token
+}
+
+camera top_down {
+  mode lookAt
+  fov 45deg
+  position [0m, 8.5m, 0.5m]
+  target point [0m, 0m, 0m]
+}
+
+beat arrival {
+  from 0s
+  to 4.2s
+  intent "用入口机位确认顾客从门口走向柜台，并保持店主与顾客的视线轴"
+  emotion "日常中带着谨慎观察"
+  focus actor customer
+  continuity preserve
+}
+
+beat order_exchange {
+  from 4.2s
+  to 9.2s
+  intent "通过正反打和号码牌特写完成点单信息的视觉交接"
+  emotion "短促、明确"
+  focus object order_token
+  continuity preserve
+}
+
+beat spatial_release {
+  from 9.2s
+  to 12s
+  intent "以俯视镜头重新交代前厅、柜台和后厨三块空间关系"
+  emotion "秩序恢复"
+  focus point [0m, 0m, 0m]
+  continuity preserve
+}
+
+workflow professional_previs {
+  approval manual
+  failure stop
+  dispatch previs.asset-supervisor as assets scope scene mode review
+  dispatch previs.blocking-director as staging scope beat:arrival mode propose after assets
+  dispatch previs.action-choreographer as performance scope timeline mode propose after staging
+  dispatch previs.cinematographer as coverage scope beat:order_exchange mode propose after staging
+  dispatch previs.continuity-supervisor as continuity scope scene mode review after performance,coverage
+  dispatch previs.qc as final_qc scope scene mode review after continuity
+}
+
+timeline {
+  cut 0s camera dining_master
+  play 0s actor owner clip "idle" loop true
+  play 0s actor customer clip "walk" loop true
+  play 0s actor cook clip "idle" loop true
+  gaze 0s actor owner target actor customer bone "head" duration 12s strength 0.7
+  gaze 0s actor customer target actor owner bone "head" duration 8.8s strength 0.7
+  key 0s customer.position [4m, 0m, 1.8m]
+  key 3.7s customer.position [0.8m, 0m, 0.8m] ease smoothstep
+
+  cut 2.2s camera entrance_checkout
+  play 3.7s actor customer clip "idle" loop true blend 0.18s
+  cut 4.2s camera dining_master
+  play 4.3s actor customer clip "talk" loop true blend 0.16s
+  cut 5.6s camera window_reverse
+  play 5.7s actor customer clip "idle" loop true blend 0.16s
+  play 5.8s actor owner clip "talk" loop true blend 0.16s
+
+  cut 7.3s camera token_insert
+  play 7.25s actor owner clip "reach" loop false blend 0.12s
+  key 7.3s order_token.position [0.15m, 1.07m, 0.45m]
+  key 8.3s order_token.position [0.55m, 1.07m, 0.45m] ease smoothstep
+
+  cut 8.7s camera window_reverse
+  play 8.8s actor owner clip "idle" loop true blend 0.14s
+  play 8.8s actor customer clip "reach" loop false blend 0.14s
+  cut 9.8s camera top_down
+  key 9.8s top_down.position [0m, 8.5m, 0.5m]
+  key 12s top_down.position [0m, 9.5m, 1.2m] ease smoothstep
+}

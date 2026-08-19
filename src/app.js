@@ -160,7 +160,15 @@ const compile = async () => {
   elements.timeline.max = String(activeIr.scene.durationMs)
   elements.duration.textContent = formatTime(activeIr.scene.durationMs)
   elements.ir.textContent = JSON.stringify(activeIr, null, 2)
-  elements.irSummary.textContent = `${Object.keys(activeIr.entities).length} entities · ${activeIr.tracks.length} tracks · ${activeIr.events.length} events`
+  const beatCount = Object.keys(activeIr.beats ?? {}).length
+  const skillCount = activeIr.workflow?.dispatches.length ?? 0
+  elements.irSummary.textContent = [
+    `${Object.keys(activeIr.entities).length} entities`,
+    `${activeIr.tracks.length} tracks`,
+    `${activeIr.events.length} events`,
+    beatCount ? `${beatCount} beats` : '',
+    skillCount ? `${skillCount} skills` : ''
+  ].filter(Boolean).join(' · ')
   renderEventTrack(activeIr)
   seek(0)
   elements.loading.hidden = true
@@ -253,6 +261,8 @@ window.__SHOT_DSL_APP__ = {
       playing,
       currentTimeMs,
       sceneId: activeIr?.scene.id ?? null,
+      beatCount: activeIr ? Object.keys(activeIr.beats ?? {}).length : 0,
+      workflowSkillCount: activeIr?.workflow?.dispatches.length ?? 0,
       entityCount: activeIr ? Object.keys(activeIr.entities).length : 0,
       camera: player?.activeCamera?.name ?? null,
       skinnedActors: stats.skinnedActors ?? 0,

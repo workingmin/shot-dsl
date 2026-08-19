@@ -1,0 +1,198 @@
+shotdsl 0.1
+
+scene chamber_clue_spatial_reveal {
+  duration 10s
+  fps 30
+  seed 9904
+  style cinematic-outline
+}
+
+actor analyst {
+  model "human-mannequin"
+  color lightgray
+  position [-1.45m, 0m, 0.15m]
+  rotation [0deg, 90deg, 0deg]
+}
+
+actor suspect {
+  model "human-mannequin"
+  color #8fa7b6
+  position [1.35m, 0m, 0.15m]
+  rotation [0deg, -90deg, 0deg]
+}
+
+actor sentinel {
+  model "game-ready-soldier"
+  color white
+  position [0m, 0m, -2.2m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+object chamber_floor {
+  primitive cylinder
+  radius 4.2m
+  height 0.1m
+  color #313a40
+  position [0m, 0.05m, 0m]
+}
+
+object round_table {
+  primitive cylinder
+  radius 1m
+  height 0.78m
+  color #4c5053
+  position [0m, 0.78m, 0.15m]
+}
+
+object evidence_cup {
+  primitive cylinder
+  radius 0.14m
+  height 0.22m
+  color ivory
+  position [0.25m, 1.28m, 0.15m]
+}
+
+object shard_a {
+  primitive box
+  size [0.16m, 0.02m, 0.08m]
+  color ivory
+  position [0.2m, 0.82m, 0.25m]
+  visibility false
+}
+
+object shard_b {
+  primitive box
+  size [0.12m, 0.02m, 0.1m]
+  color ivory
+  position [0.48m, 0.82m, 0.08m]
+  rotation [0deg, 28deg, 0deg]
+  visibility false
+}
+
+object console_left {
+  primitive box
+  size [1.7m, 1m, 0.55m]
+  color #284a58
+  position [-2.7m, 0.5m, -2m]
+}
+
+object console_right {
+  primitive box
+  size [1.7m, 1m, 0.55m]
+  color #284a58
+  position [2.7m, 0.5m, -2m]
+}
+
+object monitor_wall {
+  primitive box
+  size [4.2m, 2m, 0.1m]
+  color #173844
+  position [0m, 1.75m, -3.55m]
+}
+
+camera chamber_master {
+  mode lookAt
+  fov 39deg
+  position [0m, 2.3m, 5.8m]
+  target point [0m, 1m, 0m]
+}
+
+camera over_analyst {
+  mode lookAt
+  fov 32deg
+  position [-0.8m, 1.55m, 1.9m]
+  target actor suspect bone "head"
+}
+
+camera cup_insert {
+  mode lookAt
+  fov 24deg
+  position [0.9m, 1.45m, 1.15m]
+  target object evidence_cup
+  roll 1deg
+}
+
+camera analyst_close {
+  mode follow
+  fov 28deg
+  target actor analyst bone "head"
+  offset [-0.45m, 0.08m, 1.8m]
+}
+
+camera overhead_reveal {
+  mode lookAt
+  fov 46deg
+  position [0m, 7.6m, 0.6m]
+  target point [0m, 0m, 0m]
+}
+
+beat interrogation {
+  from 0s
+  to 4s
+  intent "用圆桌主镜头和越肩镜头建立审讯关系，哨兵保持在背景中形成压力"
+  emotion "冷静压迫"
+  focus actor suspect
+  continuity preserve
+}
+
+beat clue_break {
+  from 4s
+  to 6.6s
+  intent "把杯子从普通道具变成破裂线索，以落杯和碎片显现形成视觉标点"
+  emotion "突然失控"
+  focus object evidence_cup
+  continuity preserve
+}
+
+beat room_truth {
+  from 6.6s
+  to 10s
+  intent "从分析员反应切到俯视，揭示三人和双侧控制台构成的真实空间关系"
+  emotion "真相浮现"
+  focus point [0m, 0m, 0m]
+  continuity preserve
+}
+
+workflow professional_previs {
+  approval manual
+  failure stop
+  dispatch previs.asset-supervisor as assets scope scene mode review
+  dispatch previs.blocking-director as staging scope beat:interrogation mode propose after assets
+  dispatch previs.action-choreographer as performance scope timeline mode propose after staging
+  dispatch previs.cinematographer as coverage scope beat:clue_break mode propose after staging
+  dispatch previs.continuity-supervisor as continuity scope scene mode review after performance,coverage
+  dispatch previs.qc as final_qc scope scene mode review after continuity
+}
+
+timeline {
+  cut 0s camera chamber_master
+  play 0s actor analyst clip "idle" loop true
+  play 0s actor suspect clip "idle" loop true
+  play 0s actor sentinel clip "idle" loop true
+  gaze 0s actor analyst target actor suspect bone "head" duration 10s strength 0.8
+  gaze 0s actor suspect target actor analyst bone "head" duration 6.5s strength 0.7
+
+  cut 1.5s camera over_analyst
+  play 1.6s actor suspect clip "talk" loop true blend 0.16s
+  cut 3.2s camera chamber_master
+  play 3.25s actor suspect clip "idle" loop true blend 0.16s
+  play 3.3s actor analyst clip "talk" loop true blend 0.16s
+
+  cut 4.25s camera cup_insert
+  play 4.2s actor suspect clip "reach" loop false blend 0.1s
+  key 4.25s evidence_cup.position [0.25m, 1.28m, 0.15m]
+  key 5.15s evidence_cup.position [0.32m, 0.84m, 0.18m] ease smoothstep
+  key 4.25s evidence_cup.rotation [0deg, 0deg, 0deg]
+  key 5.15s evidence_cup.rotation [82deg, 20deg, 35deg] ease smoothstep
+  key 0s shard_a.visibility false
+  key 5.16s shard_a.visibility true ease hold
+  key 0s shard_b.visibility false
+  key 5.16s shard_b.visibility true ease hold
+
+  cut 5.4s camera analyst_close
+  play 5.45s actor analyst clip "look-around" loop true blend 0.12s
+  cut 6.7s camera overhead_reveal
+  play 6.8s actor suspect clip "idle" loop true blend 0.14s
+  key 6.7s overhead_reveal.position [0m, 7.6m, 0.6m]
+  key 10s overhead_reveal.position [0m, 8.8m, 1.4m] ease smoothstep
+}

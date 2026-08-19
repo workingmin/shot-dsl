@@ -3,7 +3,7 @@ import { basename, extname, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 export const exampleSourceDirectory = resolve(root, 'examples')
-const defaultExampleFile = '游戏角色 · 追踪镜头.shotdsl'
+const defaultExampleFile = '山林 · 追踪与道具动作.shotdsl'
 
 const compareExampleFiles = (left, right) => {
   if (left === defaultExampleFile) return -1

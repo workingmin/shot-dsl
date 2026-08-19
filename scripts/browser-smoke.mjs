@@ -106,7 +106,7 @@ const run = async () => {
   const normalizedHumans = initialHumanMetrics.every(metric => metric.modelId === 'game-ready-soldier' && metric.proportion === 'human-realistic' && metric.fidelity === 'game-ready' && Math.abs(metric.normalizedHeight - 1.78) < 0.001)
   const initialAssetActions = (initial.app?.characterSamples ?? []).flatMap(sample => sample.actions.map(action => action.asset))
   const humanActionsResolved = initialAssetActions.length === 2 && initialAssetActions.every(asset => asset === 'Idle')
-  if (!initial.app?.ready || initial.app.sceneId !== 'night_extraction' || initial.app.skinnedActors !== 2 || initial.app.humanActors !== 2 || initial.app.gameReadyActors !== 2 || initial.app.renderStyle !== 'cinematic' || initial.app.fallbackActors !== 0 || initial.app.characterModels?.join() !== 'game-ready-soldier' || !normalizedHumans || !humanActionsResolved || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
+  if (!initial.app?.ready || initial.app.sceneId !== 'forest_tracking_prop_action' || initial.app.beatCount !== 3 || initial.app.workflowSkillCount !== 6 || initial.app.skinnedActors !== 2 || initial.app.humanActors !== 2 || initial.app.gameReadyActors !== 2 || initial.app.renderStyle !== 'cinematic' || initial.app.fallbackActors !== 0 || initial.app.characterModels?.join() !== 'game-ready-soldier' || !normalizedHumans || !humanActionsResolved || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
     throw new Error(`Initial render assertion failed: ${JSON.stringify(initial)}`)
   }
   const initialFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
@@ -118,47 +118,67 @@ const run = async () => {
   const animatedFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (animatedFrame === initialFrame) throw new Error('Canvas pixels did not change during playback')
 
-  await selectExample('悬疑叙事 · 雨夜窗边')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'rainy_window_suspense'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  const wireframeState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (wireframeState.renderStyle !== 'wireframe' || wireframeState.skinnedActors !== 1 || wireframeState.fallbackActors !== 0 || wireframeState.characterModels?.join() !== 'human-mannequin' || wireframeState.activeGazes?.join() !== 'person_d') {
-    throw new Error(`Wireframe/gaze assertion failed: ${JSON.stringify(wireframeState)}`)
-  }
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '5500'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'token_insert'`)
+  const forestState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (forestState.activeGazes?.sort().join() !== 'partner,scout') throw new Error(`Forest prop-focus assertion failed: ${JSON.stringify(forestState)}`)
 
-  await selectExample('办公室 · 双人对峙')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'office_appointment_confrontation'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '6200'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  const outlineState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (outlineState.renderStyle !== 'cinematic-outline' || outlineState.skinnedActors !== 2 || outlineState.fallbackActors !== 0 || outlineState.activeGazes?.sort().join() !== 'employee,executive') throw new Error(`Cinematic-outline/dialogue assertion failed: ${JSON.stringify(outlineState)}`)
+  await selectExample('面馆 · 多机位空间连续性')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'noodle_shop_spatial_coverage'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '8000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'token_insert'`)
+  const noodleState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (noodleState.renderStyle !== 'cinematic-outline' || noodleState.beatCount !== 3 || noodleState.workflowSkillCount !== 6 || noodleState.skinnedActors !== 3 || noodleState.fallbackActors !== 0 || noodleState.characterModels?.join() !== 'human-mannequin' || noodleState.activeGazes?.sort().join() !== 'customer,owner') throw new Error(`Spatial coverage assertion failed: ${JSON.stringify(noodleState)}`)
 
-  await selectExample('三人 · 群体调度')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_ensemble_brawl'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'orbit_cam'`)
+  await selectExample('宫宴 · 试探与反应镜头')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'palace_banquet_reaction_chain'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '7600'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'envoy_ecu'`)
+  const palaceState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (palaceState.skinnedActors !== 3 || palaceState.fallbackActors !== 0 || palaceState.activeGazes?.sort().join() !== 'attendant,envoy,ruler') throw new Error(`Reaction-chain assertion failed: ${JSON.stringify(palaceState)}`)
+
+  await selectExample('密室 · 线索揭示与空间反转')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'chamber_clue_spatial_reveal'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '7500'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'overhead_reveal'`)
+  const chamberState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (chamberState.skinnedActors !== 3 || chamberState.gameReadyActors !== 1 || chamberState.fallbackActors !== 0 || chamberState.activeGazes?.join() !== 'analyst') throw new Error(`Clue-reveal assertion failed: ${JSON.stringify(chamberState)}`)
+
+  await selectExample('四人 · 道具传递与反应链')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'four_actor_prop_reaction_chain'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '10800'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'group_orbit'`)
   const seekState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (seekState.entityCount !== 8 || seekState.skinnedActors !== 3 || seekState.humanActors !== 3 || seekState.gameReadyActors !== 0 || seekState.fallbackActors !== 0 || seekState.characterModels?.join() !== 'human-mannequin' || Math.abs(seekState.currentTimeMs - 4300) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
+  if (seekState.skinnedActors !== 4 || seekState.humanActors !== 4 || seekState.fallbackActors !== 0 || seekState.characterModels?.join() !== 'human-mannequin' || seekState.activeGazes?.sort().join() !== 'ally,healer' || Math.abs(seekState.currentTimeMs - 10800) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
 
   const firstSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '100'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '100'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '10800'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   const repeatedSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (repeatedSeekFrame !== firstSeekFrame) throw new Error('Repeated absolute seek produced different character pixels')
 
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
 
-  await selectExample('拳击 · 特写覆盖')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'fight_coverage_closeup'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'face_impact'`)
+  await selectExample('非遗 · 表演与工艺覆盖')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'heritage_mask_performance_coverage'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '8000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'dance_orbit'`)
+  const heritageState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  const danceSample = heritageState.characterSamples?.find(sample => sample.actorId === 'performer')?.actions.find(action => action.asset === 'Dance_Simple')
+  if (heritageState.skinnedActors !== 2 || heritageState.fallbackActors !== 0 || !danceSample) throw new Error(`Heritage performance assertion failed: ${JSON.stringify(heritageState)}`)
+
+  await selectExample('战场 · 攻防反应链')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'battlefield_attack_response_chain'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '2092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'first_impact'`)
   const impactState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
   const impactFrame = impactState.activeCameraFrame
-  const punchSample = impactState.characterSamples?.find(sample => sample.actorId === 'boxer')?.actions.find(action => action.asset === 'Punch_Jab')
-  if (impactState.skinnedActors !== 2 || impactState.humanActors !== 2 || impactState.gameReadyActors !== 0 || impactState.fallbackActors !== 0 || impactFrame?.mode !== 'impact' || impactFrame?.boneTargetsResolved !== 2 || impactFrame?.contactDistance > 0.2 || Math.abs((punchSample?.time ?? -1) - 0.292) > 0.002) {
+  const punchSample = impactState.characterSamples?.find(sample => sample.actorId === 'vanguard')?.actions.find(action => action.asset === 'Punch_Jab')
+  if (impactState.skinnedActors !== 3 || impactState.humanActors !== 3 || impactState.gameReadyActors !== 0 || impactState.fallbackActors !== 0 || impactFrame?.mode !== 'impact' || impactFrame?.boneTargetsResolved !== 2 || impactFrame?.contactDistance > 0.2 || Math.abs((punchSample?.time ?? -1) - 0.292) > 0.002) {
     throw new Error(`Impact close-up assertion failed: ${JSON.stringify(impactState)}`)
   }
   const firstImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1000'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '1092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1000'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '2092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   const repeatedImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (repeatedImpactFrame !== firstImpactFrame) throw new Error('Repeated impact-camera seek produced different pixels')
 
@@ -168,7 +188,7 @@ const run = async () => {
   if (errorCount < 2) throw new Error(`Expected compiler diagnostics, received ${errorCount}`)
 
   if (process.env.SCREENSHOT_PATH) {
-    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? '游戏角色 · 追踪镜头'
+    const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? '山林 · 追踪与道具动作'
     await selectExample(screenshotExample)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
     if (process.env.SCREENSHOT_TIME) {
@@ -180,7 +200,7 @@ const run = async () => {
     await writeFile(process.env.SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
   }
 
-  const result = { initial, playbackTime: Math.round(playbackTime), wireframeState, outlineState, seekState, impactState, pngLength, compilerErrors: errorCount, diagnostics }
+  const result = { initial, playbackTime: Math.round(playbackTime), forestState, noodleState, palaceState, chamberState, seekState, heritageState, impactState, pngLength, compilerErrors: errorCount, diagnostics }
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
   socket.close()
   if (diagnostics.length) process.exitCode = 1

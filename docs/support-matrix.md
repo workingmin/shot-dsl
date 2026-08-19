@@ -16,6 +16,7 @@
 | 对话表现 | 中低 | `talk` 有确定性身体手势和可选 morph target 驱动；当前真人资产没有可用口型 morph |
 | 动作重定向 | 低 | 统一了语义骨骼目录，但没有在浏览器中执行跨 bind-pose retarget |
 | 接触与 IK | 低 | impact 相机可读真实骨骼，手部触物和脚底接触仍依赖人工走位 |
+| 专业技能调度 | 描述层 | 支持 beat、scope、依赖 DAG、review/propose 和人工 patch 审批契约；尚无 Agent runner |
 
 ## Style
 
