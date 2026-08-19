@@ -126,10 +126,11 @@ const run = async () => {
     throw new Error(`Wireframe/gaze assertion failed: ${JSON.stringify(wireframeState)}`)
   }
 
-  await selectExample('产品演示 · 镜头序列')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'product_showcase'`)
+  await selectExample('办公室 · 双人对峙')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'office_appointment_confrontation'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '6200'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   const outlineState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (outlineState.renderStyle !== 'cinematic-outline' || outlineState.fallbackActors !== 0) throw new Error(`Cinematic-outline assertion failed: ${JSON.stringify(outlineState)}`)
+  if (outlineState.renderStyle !== 'cinematic-outline' || outlineState.skinnedActors !== 2 || outlineState.fallbackActors !== 0 || outlineState.activeGazes?.sort().join() !== 'employee,executive') throw new Error(`Cinematic-outline/dialogue assertion failed: ${JSON.stringify(outlineState)}`)
 
   await selectExample('三人 · 群体调度')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_ensemble_brawl'`)
@@ -161,24 +162,6 @@ const run = async () => {
   const repeatedImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (repeatedImpactFrame !== firstImpactFrame) throw new Error('Repeated impact-camera seek produced different pixels')
 
-  await selectExample('长时间轴 · 06：30')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'broadcast_calisthenics_390s'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '305000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().currentTimeMs === 305000`)
-  const longPushupState = JSON.parse(await evaluate(`JSON.stringify({ app: window.__SHOT_DSL_APP__.getState(), duration: document.querySelector('#duration')?.textContent, markers: document.querySelectorAll('.event-marker').length })`))
-  const pushupAssets = longPushupState.app.characterSamples.flatMap(sample => sample.actions.map(action => action.asset))
-  if (longPushupState.app.skinnedActors !== 5 || longPushupState.app.humanActors !== 5 || longPushupState.app.fallbackActors !== 0 || longPushupState.app.camera !== 'side_floor' || pushupAssets.length !== 5 || !pushupAssets.every(asset => asset === 'Pushup') || longPushupState.duration !== '06:30.000' || longPushupState.markers < 50) {
-    throw new Error(`Long pushup-section assertion failed: ${JSON.stringify(longPushupState)}`)
-  }
-  const firstLongFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '375000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  const longCooldownState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  const cooldownAssets = longCooldownState.characterSamples.flatMap(sample => sample.actions.map(action => action.asset))
-  if (longCooldownState.camera !== 'coach' || cooldownAssets.length !== 5 || !cooldownAssets.every(asset => asset === 'Idle_Subtle')) throw new Error(`Long cooldown-section assertion failed: ${JSON.stringify(longCooldownState)}`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '305000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  const repeatedLongFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  if (repeatedLongFrame !== firstLongFrame) throw new Error('Repeated five-minute seek produced different pixels')
-
   await evaluate(`(() => { const input = document.querySelector('#dsl-input'); input.value = 'shotdsl 0.1\\nscene broken {\\n duration 5\\n}'; input.dispatchEvent(new Event('input', { bubbles: true })) })()`)
   await waitFor(`document.querySelector('#status')?.dataset.state === 'error'`)
   const errorCount = await evaluate(`document.querySelectorAll('.diagnostic').length`)
@@ -197,7 +180,7 @@ const run = async () => {
     await writeFile(process.env.SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
   }
 
-  const result = { initial, playbackTime: Math.round(playbackTime), seekState, impactState, longPushupState, longCooldownState, pngLength, compilerErrors: errorCount, diagnostics }
+  const result = { initial, playbackTime: Math.round(playbackTime), wireframeState, outlineState, seekState, impactState, pngLength, compilerErrors: errorCount, diagnostics }
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
   socket.close()
   if (diagnostics.length) process.exitCode = 1

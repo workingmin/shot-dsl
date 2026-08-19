@@ -178,7 +178,7 @@ gaze 8s actor witness target actor detective bone "head" duration 2s
 
 `gaze` 是有持续时间的离散约束事件。时间轴按绝对时间决定是否激活，播放器在动作采样后叠加头部朝向；重复 seek 到相同时间得到相同结果。
 
-scene duration 可以使用分钟级等价秒数，例如 `duration 390s`。时间轴和播放器均采用绝对毫秒求值，长节目不需要从 0 秒累计播放才能 seek 到后续分节。
+scene duration 使用绝对时间，时间轴和播放器均采用毫秒直接求值。当前产品示例聚焦 5～10 秒的短场景和镜头覆盖，不把长节目编排作为现阶段展示目标。
 
 ## 类型与单位
 

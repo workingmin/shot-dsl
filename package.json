@@ -8,9 +8,10 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/serve.mjs",
+    "assets:audit": "node scripts/audit-character-assets.mjs",
     "test": "node --test",
     "smoke": "node scripts/browser-smoke.mjs",
-    "check": "npm test && npm run build"
+    "check": "npm run assets:audit && npm test && npm run build"
   },
   "dependencies": {
     "esbuild": "0.25.8",

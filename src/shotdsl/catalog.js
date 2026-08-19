@@ -1,4 +1,4 @@
-const alias = (id, support = 'alias', reason = '') => ({ alias: id, support, reason })
+const alias = (id, support = 'alias', reason = '', profile = null) => ({ alias: id, support, reason, ...(profile ? { profile } : {}) })
 
 export const STYLE_CATALOG = {
   cinematic: {
@@ -79,8 +79,13 @@ export const CHARACTER_CATALOG = {
     id: 'human-mannequin',
     url: '/assets/characters/HumanMannequin.glb',
     label: 'Human Mannequin · Mesh2Motion / Quaternius · CC0',
+    source: 'Mesh2Motion / Quaternius',
+    license: { id: 'CC0-1.0', distribution: 'allowed' },
     proportion: 'human-realistic',
     fidelity: 'motion-prototype',
+    profile: { species: 'human', age: 'adult', gender: 'neutral', wardrobe: 'mannequin' },
+    rig: { family: 'quaternius-humanoid', restPose: 'asset-native', rootMotion: 'in-place', retargetPolicy: 'offline-calibrated-only' },
+    speech: { mode: 'procedural-gesture', visemes: [] },
     authoredBounds: { minY: -0.0003856996, maxY: 1.8291784525 },
     bones: {
       head: 'head',
@@ -129,8 +134,13 @@ export const CHARACTER_CATALOG = {
     id: 'game-ready-soldier',
     url: '/assets/characters/Soldier.glb',
     label: 'Vanguard Soldier · three.js / Mixamo sample',
+    source: 'three.js r185 / Mixamo Vanguard sample',
+    license: { id: 'upstream-review-required', distribution: 'internal-prototype-only' },
     proportion: 'human-realistic',
     fidelity: 'game-ready',
+    profile: { species: 'human', age: 'adult', gender: 'unspecified', wardrobe: 'military' },
+    rig: { family: 'mixamo', restPose: 'mixamo-t-pose', rootMotion: 'in-place', retargetPolicy: 'offline-calibrated-only' },
+    speech: { mode: 'procedural-gesture', visemes: [] },
     authoredBounds: { minY: 0, maxY: 1.8 },
     clips: {
       idle: 'Idle',
@@ -157,6 +167,11 @@ export const CHARACTER_CATALOG = {
     id: 'robot-expressive',
     url: '/assets/characters/RobotExpressive.glb',
     label: 'Robot Expressive · CC0',
+    source: 'three.js / Quaternius',
+    license: { id: 'CC0-1.0', distribution: 'allowed' },
+    profile: { species: 'robot', age: 'not-applicable', gender: 'neutral', wardrobe: 'integrated' },
+    rig: { family: 'robot-expressive', restPose: 'asset-native', rootMotion: 'mixed', retargetPolicy: 'native-clips-only' },
+    speech: { mode: 'procedural-gesture', visemes: [] },
     authoredBounds: { minY: -0.0203044343, maxY: 4.7711189772 },
     bones: {
       head: 'Head',
@@ -193,14 +208,61 @@ export const CHARACTER_CATALOG = {
     }
   },
   humanoid: alias('human-mannequin'),
-  'humanoid-male': alias('human-mannequin', 'approximate', 'The bundled mannequin has no gendered mesh variant'),
-  'humanoid-female': alias('human-mannequin', 'approximate', 'The bundled mannequin has no gendered mesh variant'),
-  generic_male_business: alias('human-mannequin', 'approximate', 'Business wardrobe asset is not bundled'),
-  generic_female_business: alias('human-mannequin', 'approximate', 'Business wardrobe and gendered mesh are not bundled'),
-  generic_female: alias('human-mannequin', 'approximate', 'Gendered mesh is not bundled'),
-  generic_young_male: alias('human-mannequin', 'approximate', 'Age and gender variants are not bundled'),
-  generic_old_male: alias('human-mannequin', 'approximate', 'Age and gender variants are not bundled'),
-  generic_teen_male: alias('human-mannequin', 'approximate', 'Age and gender variants are not bundled')
+  'humanoid-male': alias('human-mannequin', 'approximate', 'The bundled mannequin has no gendered mesh variant', { species: 'human', age: 'adult', gender: 'male' }),
+  'humanoid-female': alias('human-mannequin', 'approximate', 'The bundled mannequin has no gendered mesh variant', { species: 'human', age: 'adult', gender: 'female' }),
+  generic_male_business: alias('human-mannequin', 'approximate', 'Business wardrobe asset is not bundled', { species: 'human', age: 'adult', gender: 'male', wardrobe: 'business' }),
+  generic_female_business: alias('human-mannequin', 'approximate', 'Business wardrobe and gendered mesh are not bundled', { species: 'human', age: 'adult', gender: 'female', wardrobe: 'business' }),
+  generic_female: alias('human-mannequin', 'approximate', 'Gendered mesh is not bundled', { species: 'human', age: 'adult', gender: 'female', wardrobe: 'casual' }),
+  generic_young_male: alias('human-mannequin', 'approximate', 'Age and gender variants are not bundled', { species: 'human', age: 'young-adult', gender: 'male', wardrobe: 'casual' }),
+  generic_old_male: alias('human-mannequin', 'approximate', 'Age and gender variants are not bundled', { species: 'human', age: 'older-adult', gender: 'male', wardrobe: 'traditional' }),
+  generic_teen_male: alias('human-mannequin', 'approximate', 'Age and gender variants are not bundled', { species: 'human', age: 'teen', gender: 'male', wardrobe: 'casual' })
+}
+
+const dialogueActions = ['idle', 'walk', 'talk', 'reach', 'look-around']
+const humanoidBones = ['head', 'upper_arm_l', 'upper_arm_r', 'lower_arm_l', 'lower_arm_r', 'hand_l', 'hand_r', 'foot_l', 'foot_r']
+const standardVisemes = ['sil', 'PP', 'FF', 'TH', 'DD', 'kk', 'CH', 'SS', 'nn', 'RR', 'aa', 'E', 'I', 'O', 'U']
+
+export const ASSET_ENHANCEMENT_TARGETS = {
+  'business-male-adult': {
+    status: 'missing',
+    aliases: ['generic_male_business'],
+    profile: { species: 'human', age: 'adult', gender: 'male', wardrobe: 'business' },
+    requiredActions: dialogueActions,
+    requiredBones: humanoidBones,
+    requiredVisemes: standardVisemes
+  },
+  'business-female-adult': {
+    status: 'missing',
+    aliases: ['generic_female_business'],
+    profile: { species: 'human', age: 'adult', gender: 'female', wardrobe: 'business' },
+    requiredActions: dialogueActions,
+    requiredBones: humanoidBones,
+    requiredVisemes: standardVisemes
+  },
+  'traditional-male-older-adult': {
+    status: 'missing',
+    aliases: ['generic_old_male'],
+    profile: { species: 'human', age: 'older-adult', gender: 'male', wardrobe: 'traditional' },
+    requiredActions: dialogueActions,
+    requiredBones: humanoidBones,
+    requiredVisemes: standardVisemes
+  },
+  'casual-male-teen': {
+    status: 'missing',
+    aliases: ['generic_teen_male'],
+    profile: { species: 'human', age: 'teen', gender: 'male', wardrobe: 'casual' },
+    requiredActions: dialogueActions,
+    requiredBones: humanoidBones,
+    requiredVisemes: standardVisemes
+  },
+  'casual-female-adult': {
+    status: 'missing',
+    aliases: ['generic_female'],
+    profile: { species: 'human', age: 'adult', gender: 'female', wardrobe: 'casual' },
+    requiredActions: dialogueActions,
+    requiredBones: humanoidBones,
+    requiredVisemes: standardVisemes
+  }
 }
 
 const resolveCatalogName = (name, catalog, aliases = {}) => {

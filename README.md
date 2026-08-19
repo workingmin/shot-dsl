@@ -16,7 +16,7 @@
 - 确定性手持抖动、镜头 roll、骨骼跟拍和击打接触特写；
 - Catalog 驱动的 style/action/model 别名规范化、模型级动作能力诊断和无静默 Idle 降级；
 - `talk` / `reach` / `look-around` 表演动作和按 point/entity/bone 定位的确定性 `gaze` 约束；
-- 游戏角色追踪、拳击覆盖、群体调度、长时间轴及五个兼容表达示例共 12 个内置场景。
+- 7 个经过收敛的短场景示例，覆盖游戏角色追踪、拳击覆盖、群体调度、办公室对话、庭院对话、悬疑特写和走廊紧张跟拍。
 
 已完成的静态线稿原型归档在远端分支：
 
@@ -37,7 +37,6 @@ prototype/storyboarder-sts
 - 任意拖拽时间轴可重复得到相同姿势，资产加载失败必须显示 fallback 状态；
 - 近景使用较长焦段，避免广角透视再次放大头部和上身；
 - 击打特写必须解析真实拳头/头部骨骼，命中峰值的两骨骼距离进入浏览器回归检查。
-- 长节目必须支持分钟级时间显示和跨 5 分钟随机 seek，结果不能依赖从第 0 秒逐帧播放。
 
 默认评审示例使用 `game-ready-soldier`：带贴图的约 2.1 MB 蒙皮角色，提供原生 `Idle / Walk / Run` 动作和 Mixamo 骨骼语义映射。该资产来自 three.js 官方动画示例，仅用于内部原型，外部或商业发布前必须重新核验上游资产授权。
 
@@ -46,8 +45,6 @@ prototype/storyboarder-sts
 当前没有把拳击动作直接运行时重定向到游戏角色：实测两个资产的 bind pose 不一致会造成肩臂畸变。正确的下一步是引入与目标人物同骨架、离线校正过的成套动捕资产，或建立带 rest-pose 校准的离线 retarget pipeline，而不是在浏览器中静默接受错误姿势。
 
 ShotDSL 语义动作 `punch`、`cross`、`hook` 分别映射到不同拳法。旧的 `kick` 名称暂时为兼容 v0.1 保留，但当前人形动作库尚无真实踢击 Clip，因此它不进入产品演示样例。
-
-长节目示例使用 5 人队形和准备、伸展、踏步、开合跳、侧步、下蹲、俯卧撑、节奏整理、放松 9 个分节。它用于验证长时间轴和动作编排能力，并非对任何特定官方广播体操套路的逐节复刻。
 
 ## 本地运行
 
@@ -73,7 +70,7 @@ npm start
 - `npm run build` 会重新扫描目录，并把示例文件和自动生成的清单写入 `dist/examples/`；
 - 默认示例是 `游戏角色 · 追踪镜头.shotdsl`，删除它后会使用按中文文件名排序的第一个示例。
 
-完整检查包括语言编译与时间轴单元测试；浏览器烟测会验证 glTF 加载、蒙皮人物数量、无 fallback、播放、任意 seek、camera cut、错误诊断和 PNG 画布：
+完整检查包括人物资产元数据/GLB 审计、语言编译与时间轴单元测试；浏览器烟测会验证 glTF 加载、蒙皮人物数量、无 fallback、播放、任意 seek、camera cut、错误诊断和 PNG 画布：
 
 ```bash
 npm run check
@@ -129,6 +126,7 @@ flowchart LR
 - [技术可行性与实施路线](docs/feasibility.md)
 - [ShotDSL v0.1 草案](docs/shotdsl-v0.1.md)
 - [ShotDSL 支持能力评估](docs/support-matrix.md)
+- [人物资产数据增强方案](docs/asset-data-enhancement.md)
 
 ## 建议实施顺序
 

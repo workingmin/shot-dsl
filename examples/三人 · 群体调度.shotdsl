@@ -11,7 +11,7 @@ actor lead {
   model "human-mannequin"
   color ivory
   position [0m, 0m, 0.3m]
-  rotation [0deg, 0deg, 0deg]
+  rotation [0deg, -90deg, 0deg]
 }
 
 actor left_thug {
@@ -85,6 +85,9 @@ timeline {
   cut 2.15s camera master
   play 2.3s actor left_thug clip "fall" loop false blend 0.1s
   play 2.85s actor lead clip "guard" loop true blend 0.15s
+  # 主角转向右侧来敌，避免动作继续朝向已经倒地的左侧人物
+  key 2.55s lead.rotation [0deg, -90deg, 0deg]
+  key 3.05s lead.rotation [0deg, 90deg, 0deg] ease smoothstep
   play 3.15s actor right_thug clip "hook" loop false blend 0.12s
   play 3.32s actor lead clip "hit-face" loop false blend 0.08s
 

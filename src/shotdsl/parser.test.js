@@ -101,17 +101,6 @@ test('cinematic camera compiles deterministic shake and roll tracks', () => {
   assert.ok(result.ir.tracks.some(track => track.target === 'shoulder_track.shake'))
 })
 
-test('long calisthenics example compiles a six-minute multi-section timeline', () => {
-  const example = exampleForScene('broadcast_calisthenics_390s')
-  const result = compileShotDSL(example.source)
-  assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
-  assert.equal(result.ir.scene.durationMs, 390000)
-  assert.equal(Object.values(result.ir.entities).filter(entity => entity.kind === 'actor').length, 5)
-  assert.equal(result.ir.events.filter(event => event.type === 'playClip').length, 45)
-  assert.ok(result.ir.events.some(event => event.timeMs === 285000 && event.type === 'playClip' && event.clip === 'pushup'))
-  assert.ok(result.ir.events.some(event => event.timeMs === 365000 && event.type === 'playClip' && event.clip === 'cooldown'))
-})
-
 test('compiler normalizes compatibility styles, action aliases and model presets with warnings', () => {
   const example = exampleForScene('rainy_window_suspense')
   const result = compileShotDSL(example.source)
@@ -120,7 +109,7 @@ test('compiler normalizes compatibility styles, action aliases and model presets
   assert.equal(result.ir.entities.person_d.model, 'human-mannequin')
   assert.equal(result.ir.entities.person_d.requestedModel, 'generic_female')
   assert.ok(result.ir.events.some(event => event.type === 'playClip' && event.clip === 'look-around' && event.requestedClip === 'look'))
-  assert.ok(result.ir.events.some(event => event.type === 'gaze' && event.actorId === 'person_d' && event.durationMs === 4000))
+  assert.ok(result.ir.events.some(event => event.type === 'gaze' && event.actorId === 'person_d' && event.durationMs === 3000))
   assert.ok(result.diagnostics.some(item => item.code === 'W_MODEL_ALIAS' && item.severity === 'warning'))
   assert.ok(result.diagnostics.some(item => item.code === 'W_ACTION_ALIAS' && item.severity === 'warning'))
 })

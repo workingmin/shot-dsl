@@ -1,5 +1,11 @@
 # Character assets
 
+Runtime capability metadata lives in `src/shotdsl/catalog.js`. Run
+`npm run assets:audit` after changing a GLB or catalog entry; the audit checks
+animation names, semantic bones, morph targets, licensing metadata, and the
+machine-readable enhancement targets documented in
+`docs/asset-data-enhancement.md`.
+
 ## Soldier.glb
 
 - Source: three.js r185 `examples/models/gltf/Soldier.glb`
