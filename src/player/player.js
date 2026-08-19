@@ -6,6 +6,8 @@ import { CharacterAssetManager } from './character-runtime.js'
 import { applyProceduralClip, createHumanoid } from './humanoid.js'
 
 const clone = value => structuredClone(value)
+const isCinematicStyle = style => style === 'cinematic' || style === 'cinematic-outline'
+const usesOutlineEffect = style => style === 'rough-ink' || style === 'cinematic-outline'
 
 const setTransform = (object, transform) => {
   object.position.fromArray(transform.position)
@@ -22,17 +24,19 @@ const geometryFor = entity => {
 }
 
 const createPrimitiveMesh = (geometry, color, lineMaterial, ghostLineMaterial, renderStyle) => {
-  const cinematic = renderStyle === 'cinematic'
+  const cinematic = isCinematicStyle(renderStyle)
+  const wireframe = renderStyle === 'wireframe'
   const material = new THREE.MeshStandardMaterial({
     color,
     roughness: cinematic ? 0.72 : 1,
     metalness: cinematic ? 0.04 : 0,
-    flatShading: !cinematic
+    flatShading: !cinematic,
+    wireframe
   })
   const mesh = new THREE.Mesh(geometry, material)
   mesh.castShadow = true
   mesh.receiveShadow = true
-  if (cinematic) return mesh
+  if (cinematic || wireframe) return mesh
   const edges = new THREE.EdgesGeometry(geometry, 18)
   const primary = new THREE.LineSegments(edges, lineMaterial)
   const echo = new THREE.LineSegments(edges, ghostLineMaterial)
@@ -76,6 +80,7 @@ export class ShotPlayer {
     this.ir = null
     this.activeCamera = null
     this.cameraDebug = null
+    this.lastTimelineState = null
     this.currentTimeMs = 0
     this.onCameraChange = null
     this.loadGeneration = 0
@@ -135,9 +140,10 @@ export class ShotPlayer {
   }
 
   configureRenderStyle(style) {
-    this.renderStyle = style === 'cinematic' ? 'cinematic' : 'rough-ink'
-    const cinematic = this.renderStyle === 'cinematic'
-    this.scene.background.set(cinematic ? '#252a2f' : '#ebe8df')
+    this.renderStyle = ['cinematic', 'rough-ink', 'wireframe', 'cinematic-outline'].includes(style) ? style : 'rough-ink'
+    const cinematic = isCinematicStyle(this.renderStyle)
+    const wireframe = this.renderStyle === 'wireframe'
+    this.scene.background.set(wireframe ? '#11181d' : cinematic ? '#252a2f' : '#ebe8df')
     this.scene.environment = cinematic ? this.studioEnvironment : null
     this.scene.fog = cinematic ? new THREE.Fog('#252a2f', 11, 30) : null
     this.renderer.toneMapping = cinematic ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping
@@ -145,17 +151,23 @@ export class ShotPlayer {
   }
 
   addGround() {
-    const cinematic = this.renderStyle === 'cinematic'
+    const cinematic = isCinematicStyle(this.renderStyle)
+    const wireframe = this.renderStyle === 'wireframe'
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 30),
-      new THREE.MeshStandardMaterial({ color: cinematic ? '#555b60' : '#ddd9cf', roughness: cinematic ? 0.86 : 1, metalness: cinematic ? 0.03 : 0 })
+      new THREE.MeshStandardMaterial({
+        color: wireframe ? '#36515d' : cinematic ? '#555b60' : '#ddd9cf',
+        roughness: cinematic ? 0.86 : 1,
+        metalness: cinematic ? 0.03 : 0,
+        wireframe
+      })
     )
     plane.rotation.x = -Math.PI / 2
     plane.position.y = -0.005
     plane.receiveShadow = true
     const grid = new THREE.GridHelper(30, 30, '#77766e', '#b8b5ac')
     grid.material.transparent = true
-    grid.material.opacity = cinematic ? 0.08 : 0.34
+    grid.material.opacity = wireframe ? 0.28 : cinematic ? 0.08 : 0.34
     this.scene.add(plane, grid)
   }
 
@@ -210,7 +222,7 @@ export class ShotPlayer {
   }
 
   addDefaultLights() {
-    const cinematic = this.renderStyle === 'cinematic'
+    const cinematic = isCinematicStyle(this.renderStyle)
     this.scene.add(new THREE.HemisphereLight(cinematic ? '#dce9ff' : '#ffffff', cinematic ? '#342f2d' : '#8f8a7f', cinematic ? 1.45 : 2.2))
     const key = new THREE.DirectionalLight(cinematic ? '#fff1da' : '#fffaf1', cinematic ? 3.4 : 2.8)
     key.position.set(4.5, 8, 5.5)
@@ -275,6 +287,19 @@ export class ShotPlayer {
 
   targetPoint(target) {
     return this.resolveTargetPoint(target).point
+  }
+
+  applyGaze(actorId, gaze) {
+    const runtime = this.runtime.get(actorId)
+    if (!runtime || runtime.entity.kind !== 'actor') return false
+    const target = this.targetPoint(gaze.target)
+    if (runtime.character) return runtime.character.applyGaze(target, gaze.strength)
+    if (!runtime.rig) return false
+    const localTarget = runtime.object.worldToLocal(target.clone())
+    const direction = localTarget.sub(runtime.rig.headPivot.position)
+    runtime.rig.headPivot.rotation.y += THREE.MathUtils.clamp(Math.atan2(direction.x, Math.max(0.0001, direction.z)), -0.75, 0.75) * gaze.strength
+    runtime.rig.headPivot.rotation.x += THREE.MathUtils.clamp(-Math.atan2(direction.y, Math.max(0.0001, Math.hypot(direction.x, direction.z))), -0.4, 0.4) * gaze.strength
+    return true
   }
 
   resolveCamera(id) {
@@ -348,6 +373,7 @@ export class ShotPlayer {
     if (!this.ir) return
     this.currentTimeMs = Math.max(0, Math.min(this.ir.scene.durationMs, timeMs))
     const state = evaluateTimeline(this.ir, this.currentTimeMs)
+    this.lastTimelineState = state
     this.resetRuntime()
     for (const [target, value] of state.values) this.applyValue(target, value)
     for (const [actorId, actor] of this.runtime) {
@@ -356,6 +382,8 @@ export class ShotPlayer {
       if (actor.character) actor.character.sample(clip)
       else if (actor.rig) applyProceduralClip(actor.rig, clip)
     }
+    this.scene.updateMatrixWorld(true)
+    for (const [actorId, gaze] of state.gazes) this.applyGaze(actorId, gaze)
     this.scene.updateMatrixWorld(true)
     const previousCamera = this.activeCamera?.name
     this.activeCamera = this.resolveCamera(state.activeCameraId)
@@ -380,8 +408,8 @@ export class ShotPlayer {
   render() {
     if (!this.activeCamera) return
     this.resize()
-    if (this.renderStyle === 'cinematic') this.renderer.render(this.scene, this.activeCamera)
-    else this.outlineEffect.render(this.scene, this.activeCamera)
+    if (usesOutlineEffect(this.renderStyle)) this.outlineEffect.render(this.scene, this.activeCamera)
+    else this.renderer.render(this.scene, this.activeCamera)
   }
 
   exportFrame() {
@@ -404,6 +432,7 @@ export class ShotPlayer {
       characterModels: [...new Set(characters.map(runtime => runtime.character.metrics.modelId))].sort(),
       characterMetrics: characters.map(runtime => ({ actorId: runtime.entity.id, ...runtime.character.metrics })),
       characterSamples: characters.map(runtime => ({ actorId: runtime.entity.id, actions: runtime.character.lastSample ?? [] })),
+      activeGazes: this.lastTimelineState ? [...this.lastTimelineState.gazes.keys()] : [],
       activeCameraFrame: this.cameraDebug,
       fallbackActors: [...this.runtime.values()].filter(runtime => runtime.rig).length
     }

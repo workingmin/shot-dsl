@@ -1,0 +1,62 @@
+shotdsl 0.1
+
+scene product_showcase {
+  duration 9s
+  fps 30
+  seed 2246
+  style 3d_cinematic_wireframe
+}
+
+object glass_p {
+  primitive box
+  size [0.18m, 0.28m, 0.18m]
+  color lightblue
+  position [0m, 0.18m, 0m]
+}
+
+object display_platform {
+  primitive box
+  size [2.8m, 0.08m, 2.8m]
+  color darkslategray
+  position [0m, 0.04m, 0m]
+}
+
+camera cam_close_static {
+  mode lookAt
+  fov 32deg
+  position [1.6m, 1.1m, 0m]
+  target object glass_p
+  roll 0deg
+}
+
+camera cam_arc {
+  mode orbit
+  fov 38deg
+  target object glass_p
+  radius 2m
+  azimuth 90deg
+  elevation 9deg
+  roll 0deg
+}
+
+camera cam_wide_out {
+  mode lookAt
+  fov 52deg
+  position [2.4m, 1.2m, 0m]
+  target object glass_p
+  roll 0deg
+}
+
+timeline {
+  # 轻柔环境音乐
+  cut 0s camera cam_close_static
+
+  # 环绕产品，而不是让相机直线穿过产品
+  cut 2s camera cam_arc
+  key 2s cam_arc.azimuth 90deg
+  key 6s cam_arc.azimuth -90deg ease smoothstep
+
+  cut 6s camera cam_wide_out
+  key 6s cam_wide_out.position [2.4m, 1.2m, 0m]
+  key 9s cam_wide_out.position [4.2m, 1.3m, 0m] ease smoothstep
+}

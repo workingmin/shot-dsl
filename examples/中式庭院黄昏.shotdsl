@@ -1,0 +1,85 @@
+shotdsl 0.1
+
+scene chinese_courtyard_dusk {
+  duration 18s
+  fps 30
+  seed 6613
+  style 3d_cinematic_wireframe
+}
+
+actor elder_e {
+  model "generic_old_male"
+  color white
+  position [-2m, 0m, 1m]
+  rotation [0deg, 0deg, 0deg]
+}
+
+actor youth_f {
+  model "generic_teen_male"
+  color lightgray
+  position [2m, 0m, 2m]
+  rotation [0deg, 180deg, 0deg]
+}
+
+object stone_table {
+  primitive box
+  size [1.8m, 0.75m, 1m]
+  color gray
+  position [0m, 0.375m, 1.5m]
+}
+
+object ground {
+  primitive box
+  size [12m, 0.12m, 10m]
+  color dimgray
+  position [0m, 0.06m, 0m]
+}
+
+camera cam_wide_high {
+  mode lookAt
+  fov 55deg
+  position [0m, 4.2m, 6m]
+  target point [0m, 1m, 1.5m]
+  roll 0deg
+}
+
+camera cam_two_shot {
+  mode lookAt
+  fov 40deg
+  position [0m, 1.6m, 4m]
+  target point [0m, 1.2m, 1.5m]
+  roll 0deg
+}
+
+camera cam_wide_pull {
+  mode lookAt
+  fov 52deg
+  position [0m, 1.6m, 4m]
+  target point [0m, 1.2m, 1.5m]
+  roll 0deg
+}
+
+timeline {
+  # 晚风与渐弱的鸟声
+  cut 0s camera cam_wide_high
+  play 0s actor elder_e clip "walk" loop true blend 0.2s
+  play 0s actor youth_f clip "idle" loop true
+
+  key 0s elder_e.position [-2m, 0m, 1m]
+  key 5s elder_e.position [0m, 0m, 1m] ease smoothstep
+  key 0s cam_wide_high.position [0m, 4.2m, 6m]
+  key 5s cam_wide_high.position [0m, 3m, 6m] ease smoothstep
+
+  # E：“世事如流水。”
+  cut 5s camera cam_two_shot
+  play 5s actor elder_e clip "idle" loop true blend 0.2s
+  play 5.2s actor elder_e clip "reach" loop false blend 0.2s
+  play 5.4s actor youth_f clip "look" loop true blend 0.2s
+  gaze 5.4s actor youth_f target actor elder_e bone "head" duration 5.6s strength 0.85
+
+  cut 11s camera cam_wide_pull
+  play 11s actor elder_e clip "idle" loop true blend 0.2s
+  play 11s actor youth_f clip "idle" loop true blend 0.2s
+  key 11s cam_wide_pull.position [0m, 1.6m, 4m]
+  key 18s cam_wide_pull.position [0m, 3.1m, 7.2m] ease smoothstep
+}

@@ -7,14 +7,16 @@
 `main` 已具备可运行的 Web MVP，当前演示目标收敛为“游戏级拟真人物 + 动捕动作 + 电影镜头”：
 
 - ShotDSL v0.1 行式 Parser、语义校验、带行号诊断和 Scene IR；
-- Three.js PBR / NPR 双渲染模式、glTF 骨骼人物和五种相机模式；
+- Three.js cinematic / rough-ink / wireframe / cinematic-outline 四种渲染 preset、glTF 骨骼人物和五种相机模式；
 - 绝对时间轴求值、linear/smoothstep/hold、quaternion slerp 和 camera cut；
 - AnimationMixer 绝对时间采样、动作 crossfade 和多人物独立骨架；
 - ACES tone mapping、室内环境反射、三点布光、软阴影和保留贴图的电影模式；
 - 适配蒙皮人物的 OutlineEffect 与静态几何双描边线稿模式；
 - 播放、暂停、回到开头、时间轴拖拽和 PNG 当前帧导出；
 - 确定性手持抖动、镜头 roll、骨骼跟拍和击打接触特写；
-- 游戏角色追踪、拳击覆盖、三人群体调度和 6 分 30 秒长时间轴四个目标示例。
+- Catalog 驱动的 style/action/model 别名规范化、模型级动作能力诊断和无静默 Idle 降级；
+- `talk` / `reach` / `look-around` 表演动作和按 point/entity/bone 定位的确定性 `gaze` 约束；
+- 游戏角色追踪、拳击覆盖、群体调度、长时间轴及五个兼容表达示例共 12 个内置场景。
 
 已完成的静态线稿原型归档在远端分支：
 
@@ -99,7 +101,7 @@ flowchart LR
     D --> E[Scene IR<br/>确定性的 JSON 关键帧与事件]
     E --> F[Timeline Engine<br/>lerp / quaternion slerp / hold / cut]
     F --> G[Three.js Player]
-    G --> H[PBR / NPR 双渲染管线<br/>cinematic + rough-ink]
+    G --> H[四种渲染 preset<br/>PBR / NPR / wireframe / PBR outline]
     H --> I[浏览器编辑器<br/>播放、暂停、拖拽、逐帧导出]
     D -->|错误与修复提示| B
 ```
@@ -123,8 +125,10 @@ flowchart LR
 
 ## 文档
 
+- [文档导航](docs/README.md)
 - [技术可行性与实施路线](docs/feasibility.md)
 - [ShotDSL v0.1 草案](docs/shotdsl-v0.1.md)
+- [ShotDSL 支持能力评估](docs/support-matrix.md)
 
 ## 建议实施顺序
 

@@ -99,10 +99,14 @@ scene <id> {
 }
 ```
 
-`style` 当前支持：
+`style` 当前支持四个规范值：
 
 - `cinematic`：保留 glTF 贴图与 PBR 材质，启用环境反射、ACES tone mapping、电影布光和软阴影；
-- `rough-ink`：使用 OutlineEffect 和几何描边的传统分镜线稿模式。
+- `rough-ink`：使用 OutlineEffect 和几何描边的传统分镜线稿模式；
+- `wireframe`：真实三角网格线框材质与深色技术预览背景；
+- `cinematic-outline`：保留 PBR 表面，同时叠加人物和物体轮廓。
+
+兼容输入 `rough_ink`、`storyboard`、`wire-frame`、`3d_cinematic`、`cinematic_wireframe`、`3d_cinematic_wireframe` 等会在编译期规范化，并产生 `W_STYLE_ALIAS`。Scene IR 只保存规范 style，同时用 `requestedStyle` 保留原始表达。
 
 ### 实体
 
@@ -142,11 +146,37 @@ play <time> actor <actor-id> clip <clip-name>
   [blend <time>]
 ```
 
-clip 必须存在于资产目录。缺失 clip 是编译错误或显式 warning，不能静默回退到 `idle`。
+clip 必须存在于动作目录，并且所选人物模型必须明确声明支持。全局认识某个动作、但具体模型无法执行时返回 `E_MODEL_CLIP`；运行时不再静默回退到 `idle`。
 
 DSL 使用语义 Clip 名称，资产目录负责把它映射到具体 glTF Animation Clip。例如 `punch` 可以映射为资产中的 `Punch_Jab`，因此更换角色资产时不需要修改时间轴。`blend` 表示新动作开始后与前一动作交叉混合的时长；任意 seek 时也必须由绝对时间重新计算相同权重。
 
-当前内置语义为 `idle`、`guard`、`walk`、`march`、`run`、`stretch`、`dance`、`side-step`、`jumping-jacks`、`crouch`、`pushup`、`cooldown`、`punch`、`cross`、`hook`、`kick`、`hit-face`、`fall`。默认真人模型除兼容名称 `kick` 外均提供匹配或明确复用的 Clip；`kick` 在补齐真实踢击资产前不用于演示样例。
+当前内置 21 个规范语义：`idle`、`guard`、`walk`、`march`、`run`、`stretch`、`dance`、`side-step`、`jumping-jacks`、`crouch`、`pushup`、`cooldown`、`punch`、`cross`、`hook`、`kick`、`hit-face`、`fall`、`talk`、`reach`、`look-around`。
+
+常用别名会被规范化，例如 `speak/dialogue → talk`、`grab/extend-hand → reach`、`look/glance → look-around`、`sprint/jog → run`。每个模型的动作能力分为：
+
+- `exact`：直接使用语义匹配的资产 Clip；
+- `procedural`：在基础 Clip 上确定性叠加骨骼或口型通道；
+- `approximate`：使用最接近的资产 Clip，并产生 `W_APPROXIMATE_CLIP`；
+- 缺失：产生 `E_MODEL_CLIP`，禁止播放。
+
+完整矩阵见 [ShotDSL 支持能力评估](support-matrix.md)。
+
+### 人物注视
+
+```text
+gaze <time> actor <actor-id> target <point|actor|object>
+  [duration <time>]
+  [strength <0..1>]
+```
+
+例如：
+
+```shotdsl
+gaze 3s actor witness target object photo duration 4s strength 0.9
+gaze 8s actor witness target actor detective bone "head" duration 2s
+```
+
+`gaze` 是有持续时间的离散约束事件。时间轴按绝对时间决定是否激活，播放器在动作采样后叠加头部朝向；重复 seek 到相同时间得到相同结果。
 
 scene duration 可以使用分钟级等价秒数，例如 `duration 390s`。时间轴和播放器均采用绝对毫秒求值，长节目不需要从 0 秒累计播放才能 seek 到后续分节。
 
@@ -253,7 +283,8 @@ Parser 和 Semantic Compiler 输出规范化 JSON，不保留语言层简写：
   "entities": {
     "hero": {
       "kind": "actor",
-      "model": "humanoid-male",
+      "model": "human-mannequin",
+      "requestedModel": "humanoid-male",
       "transform": {
         "position": [-1.5, 0, 0],
         "rotationQuaternion": [0, 0.7071068, 0, 0.7071068],
@@ -311,11 +342,19 @@ v0.1 至少覆盖：
 - 不支持的插值类型；
 - glTF 模型和 primitive 同时声明。
 
+当前另有以下能力诊断：
+
+- `E_UNKNOWN_MODEL`：模型或 preset 不在目录中；
+- `E_MODEL_CLIP`：模型不支持规范动作；
+- `W_STYLE_ALIAS`、`W_ACTION_ALIAS`、`W_MODEL_ALIAS`：输入已规范化；
+- `W_APPROXIMATE_CLIP`：使用近似动作资产；
+- `E_GAZE_*`：注视语法、持续时间或强度非法。
+
 ## 待验证问题
 
 1. `key 36f` 是否值得保留，还是 DSL 只允许绝对时间；
 2. 动作 clip 的结束、抢占和 crossfade 是否用更多 event 表达；
 3. camera mode 是否允许在同一 camera 上动态切换；
-4. target bone 的命名如何跨模型统一；
+4. 统一骨骼语义如何扩展到手指、眼球、下颌和脊柱分段；
 5. 多 shot 是否放在单一文档，还是一个文档只描述一个连续 scene；
 6. 物体 parent/constraint、路径运动和 IK 应在哪个版本加入。

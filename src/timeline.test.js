@@ -74,3 +74,19 @@ test('clip evaluation exposes the previous action only inside blend window', () 
   assert.equal(blending.previous.elapsedMs, 1100)
   assert.equal(evaluateTimeline(ir, 1250).clips.get('hero').previous, undefined)
 })
+
+test('gaze constraints activate and expire deterministically at absolute time', () => {
+  const ir = {
+    scene: { durationMs: 5000 },
+    entities: { hero: { id: 'hero', kind: 'actor' }, prop: { id: 'prop', kind: 'object' } },
+    tracks: [],
+    events: [
+      { timeMs: 1000, type: 'gaze', actorId: 'hero', target: { kind: 'entity', entityKind: 'object', entityId: 'prop', bone: null }, durationMs: 2000, strength: 0.8 }
+    ]
+  }
+  assert.equal(evaluateTimeline(ir, 999).gazes.size, 0)
+  const active = evaluateTimeline(ir, 1700).gazes.get('hero')
+  assert.equal(active.elapsedMs, 700)
+  assert.equal(active.strength, 0.8)
+  assert.equal(evaluateTimeline(ir, 3000).gazes.size, 0)
+})

@@ -118,6 +118,19 @@ const run = async () => {
   const animatedFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (animatedFrame === initialFrame) throw new Error('Canvas pixels did not change during playback')
 
+  await selectExample('悬疑叙事 · 雨夜窗边')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'rainy_window_suspense'`)
+  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  const wireframeState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (wireframeState.renderStyle !== 'wireframe' || wireframeState.skinnedActors !== 1 || wireframeState.fallbackActors !== 0 || wireframeState.characterModels?.join() !== 'human-mannequin' || wireframeState.activeGazes?.join() !== 'person_d') {
+    throw new Error(`Wireframe/gaze assertion failed: ${JSON.stringify(wireframeState)}`)
+  }
+
+  await selectExample('产品演示 · 镜头序列')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'product_showcase'`)
+  const outlineState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (outlineState.renderStyle !== 'cinematic-outline' || outlineState.fallbackActors !== 0) throw new Error(`Cinematic-outline assertion failed: ${JSON.stringify(outlineState)}`)
+
   await selectExample('三人 · 群体调度')
   await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'warehouse_ensemble_brawl'`)
   await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '4300'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)

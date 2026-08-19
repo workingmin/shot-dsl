@@ -12,14 +12,18 @@ import {
   parseTime,
   tokenizeArguments
 } from './values.js'
+import {
+  SUPPORTED_ACTIONS,
+  SUPPORTED_STYLES,
+  getModelAction,
+  resolveAction,
+  resolveModel,
+  resolveStyle
+} from './catalog.js'
 
 const SUPPORTED_VERSION = '0.1'
-export const SUPPORTED_CLIPS = new Set([
-  'idle', 'guard', 'walk', 'march', 'run', 'stretch', 'dance', 'side-step',
-  'jumping-jacks', 'crouch', 'pushup', 'cooldown',
-  'punch', 'cross', 'hook', 'kick', 'hit-face', 'fall'
-])
-export const SUPPORTED_STYLES = new Set(['cinematic', 'rough-ink'])
+export const SUPPORTED_CLIPS = SUPPORTED_ACTIONS
+export { SUPPORTED_STYLES }
 
 const diagnostic = (code, message, line, column = 1, severity = 'error') => ({
   code,
@@ -37,7 +41,10 @@ const stripComment = source => {
     if (escaped) { escaped = false; continue }
     if (char === '\\') { escaped = true; continue }
     if (char === '"') quoted = !quoted
-    if (char === '#' && !quoted) return source.slice(0, index)
+    if (char === '#' && !quoted) {
+      const hexadecimalColor = source.slice(index).match(/^#[0-9a-fA-F]{3,8}(?=\s|$)/)
+      if (!hexadecimalColor) return source.slice(0, index)
+    }
   }
   return source
 }
@@ -141,7 +148,7 @@ const parseScene = (block, diagnostics) => {
     duration: raw => raw,
     fps: parseNumber,
     seed: parseNumber,
-    style: parseIdentifier
+    style: raw => raw.trim()
   }, diagnostics)
   const fps = fields.fps ?? 24
   let durationMs = 6000
@@ -151,15 +158,40 @@ const parseScene = (block, diagnostics) => {
   }
   if (durationMs <= 0) diagnostics.push(diagnostic('E_DURATION', 'Scene duration must be greater than zero', block.line))
   if (!Number.isInteger(fps) || fps <= 0 || fps > 120) diagnostics.push(diagnostic('E_FPS', 'Scene fps must be an integer between 1 and 120', block.line))
-  const style = fields.style ?? 'cinematic'
-  if (!SUPPORTED_STYLES.has(style)) diagnostics.push(diagnostic('E_STYLE', `Unsupported render style '${style}'`, block.line))
-  return { id: block.id, durationMs, fps, seed: Math.trunc(fields.seed ?? 1), style }
+  const requestedStyle = fields.style ?? 'cinematic'
+  const resolvedStyle = resolveStyle(requestedStyle)
+  const styleLine = block.lines.find(line => line.text.startsWith('style '))?.line ?? block.line
+  if (!resolvedStyle) diagnostics.push(diagnostic('E_STYLE', `Unsupported render style '${requestedStyle}'`, styleLine))
+  else if (resolvedStyle.alias) diagnostics.push(diagnostic('W_STYLE_ALIAS', `Style '${requestedStyle}' resolves to '${resolvedStyle.id}'`, styleLine, 1, 'warning'))
+  return {
+    id: block.id,
+    durationMs,
+    fps,
+    seed: Math.trunc(fields.seed ?? 1),
+    style: resolvedStyle?.id ?? requestedStyle,
+    ...(resolvedStyle?.alias ? { requestedStyle } : {})
+  }
 }
 
 const parseEntity = (block, diagnostics) => {
   if (block.kind === 'actor') {
     const fields = readFields(block, { ...baseDefinitions, model: parseString, color: raw => raw.trim() }, diagnostics)
-    return { id: block.id, kind: 'actor', model: fields.model ?? 'human-mannequin', color: fields.color ?? '#d8d4ca', transform: transformFrom(fields) }
+    const requestedModel = fields.model ?? 'human-mannequin'
+    const resolvedModel = resolveModel(requestedModel)
+    const modelLine = block.lines.find(line => line.text.startsWith('model '))?.line ?? block.line
+    if (!resolvedModel) diagnostics.push(diagnostic('E_UNKNOWN_MODEL', `Unknown character model '${requestedModel}'`, modelLine))
+    else if (resolvedModel.alias) {
+      const suffix = resolvedModel.alias.reason ? `: ${resolvedModel.alias.reason}` : ''
+      diagnostics.push(diagnostic('W_MODEL_ALIAS', `Model '${requestedModel}' resolves to '${resolvedModel.id}'${suffix}`, modelLine, 1, 'warning'))
+    }
+    return {
+      id: block.id,
+      kind: 'actor',
+      model: resolvedModel?.id ?? requestedModel,
+      ...(resolvedModel?.alias ? { requestedModel } : {}),
+      color: fields.color ?? '#d8d4ca',
+      transform: transformFrom(fields)
+    }
   }
   if (block.kind === 'object') {
     const fields = readFields(block, {
@@ -301,10 +333,29 @@ const parsePlay = (entry, scene, entities, events, diagnostics) => {
   try {
     const timeMs = parseTime(tokens[1], scene.fps)
     const actorId = parseIdentifier(tokens[3])
-    const clip = parseString(tokens[5])
+    const requestedClip = parseString(tokens[5])
     if (entities[actorId]?.kind !== 'actor') { diagnostics.push(diagnostic('E_UNKNOWN_ACTOR', `Unknown actor '${actorId}'`, entry.line)); return }
-    if (!SUPPORTED_CLIPS.has(clip)) diagnostics.push(diagnostic('E_UNKNOWN_CLIP', `Unknown character clip '${clip}'`, entry.line))
-    const event = { timeMs, type: 'playClip', actorId, clip, loop: false, speed: 1, blendMs: 0, line: entry.line }
+    const resolvedAction = resolveAction(requestedClip)
+    const clip = resolvedAction?.id ?? requestedClip
+    if (!resolvedAction) diagnostics.push(diagnostic('E_UNKNOWN_CLIP', `Unknown character action '${requestedClip}'`, entry.line))
+    else if (resolvedAction.alias) diagnostics.push(diagnostic('W_ACTION_ALIAS', `Action '${requestedClip}' resolves to '${clip}'`, entry.line, 1, 'warning'))
+    const modelAction = resolvedAction ? getModelAction(entities[actorId].model, clip) : null
+    if (resolvedAction && !modelAction) diagnostics.push(diagnostic('E_MODEL_CLIP', `Model '${entities[actorId].model}' does not support action '${clip}'`, entry.line))
+    else if (modelAction?.support === 'approximate') {
+      const suffix = modelAction.reason ? `: ${modelAction.reason}` : ''
+      diagnostics.push(diagnostic('W_APPROXIMATE_CLIP', `Model '${entities[actorId].model}' approximates action '${clip}' with '${modelAction.asset}'${suffix}`, entry.line, 1, 'warning'))
+    }
+    const event = {
+      timeMs,
+      type: 'playClip',
+      actorId,
+      clip,
+      ...(resolvedAction?.alias ? { requestedClip } : {}),
+      loop: false,
+      speed: 1,
+      blendMs: 0,
+      line: entry.line
+    }
     for (let index = 6; index < tokens.length; index += 2) {
       const name = tokens[index]
       const value = tokens[index + 1]
@@ -318,6 +369,39 @@ const parsePlay = (entry, scene, entities, events, diagnostics) => {
   } catch (error) { diagnostics.push(diagnostic(error.code ?? 'E_PLAY', error.message, entry.line)) }
 }
 
+const parseGaze = (entry, scene, entities, events, diagnostics) => {
+  const tokens = tokenizeArguments(entry.text)
+  if (tokens.length < 7 || tokens[0] !== 'gaze' || tokens[2] !== 'actor' || tokens[4] !== 'target') {
+    diagnostics.push(diagnostic('E_GAZE_SYNTAX', 'Invalid gaze syntax', entry.line))
+    return
+  }
+  try {
+    const timeMs = parseTime(tokens[1], scene.fps)
+    const actorId = parseIdentifier(tokens[3])
+    if (entities[actorId]?.kind !== 'actor') {
+      diagnostics.push(diagnostic('E_UNKNOWN_ACTOR', `Unknown gaze actor '${actorId}'`, entry.line))
+      return
+    }
+    const durationIndex = tokens.indexOf('duration', 5)
+    const strengthIndex = tokens.indexOf('strength', 5)
+    const optionIndexes = [durationIndex, strengthIndex].filter(index => index >= 0)
+    const targetEnd = optionIndexes.length ? Math.min(...optionIndexes) : tokens.length
+    const target = parseTarget(tokens.slice(5, targetEnd).join(' '))
+    if (target.kind === 'entity') {
+      const targetEntity = entities[target.entityId]
+      if (!targetEntity) diagnostics.push(diagnostic('E_UNKNOWN_TARGET', `Gaze targets unknown entity '${target.entityId}'`, entry.line))
+      else if (targetEntity.kind !== target.entityKind) diagnostics.push(diagnostic('E_TARGET_KIND', `Gaze expects ${target.entityKind} '${target.entityId}', received ${targetEntity.kind}`, entry.line))
+    }
+    const durationMs = durationIndex >= 0 ? parseTime(tokens[durationIndex + 1] ?? '', scene.fps) : scene.durationMs - timeMs
+    const strength = strengthIndex >= 0 ? parseNumber(tokens[strengthIndex + 1] ?? '') : 1
+    if (durationMs <= 0) diagnostics.push(diagnostic('E_GAZE_DURATION', 'Gaze duration must be greater than zero', entry.line))
+    if (strength < 0 || strength > 1) diagnostics.push(diagnostic('E_GAZE_STRENGTH', 'Gaze strength must be between 0 and 1', entry.line))
+    events.push({ timeMs, type: 'gaze', actorId, target, durationMs, strength, line: entry.line })
+  } catch (error) {
+    diagnostics.push(diagnostic(error.code ?? 'E_GAZE', error.message, entry.line))
+  }
+}
+
 const compileTimeline = (blocks, scene, entities, diagnostics) => {
   const tracks = new Map()
   const events = []
@@ -326,6 +410,7 @@ const compileTimeline = (blocks, scene, entities, diagnostics) => {
       if (entry.text.startsWith('key ')) parseKey(entry, scene, entities, tracks, diagnostics)
       else if (entry.text.startsWith('cut ')) parseCut(entry, scene, entities, events, diagnostics)
       else if (entry.text.startsWith('play ')) parsePlay(entry, scene, entities, events, diagnostics)
+      else if (entry.text.startsWith('gaze ')) parseGaze(entry, scene, entities, events, diagnostics)
       else diagnostics.push(diagnostic('E_TIMELINE_STATEMENT', `Unknown timeline statement '${entry.text.split(' ')[0]}'`, entry.line))
     }
   }

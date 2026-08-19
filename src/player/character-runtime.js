@@ -1,116 +1,9 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
+import { CHARACTER_CATALOG, getModelAction, resolveModel } from '../shotdsl/catalog.js'
 
-export const CHARACTER_CATALOG = {
-  'human-mannequin': {
-    id: 'human-mannequin',
-    url: '/assets/characters/HumanMannequin.glb',
-    label: 'Human Mannequin · Mesh2Motion / Quaternius · CC0',
-    proportion: 'human-realistic',
-    fidelity: 'motion-prototype',
-    authoredBounds: { minY: -0.0003856996, maxY: 1.8291784525 },
-    clips: {
-      idle: 'Idle_A',
-      guard: 'Fighting Idle',
-      walk: 'Walk',
-      march: 'Walk',
-      run: 'Sprint',
-      stretch: 'Chest_Open',
-      dance: 'Dance_Simple',
-      'side-step': 'Dance Reach Hip',
-      'jumping-jacks': 'Jumping Jacks',
-      crouch: 'Crouch_Idle',
-      pushup: 'Pushup',
-      cooldown: 'Idle_Subtle',
-      punch: 'Punch_Jab',
-      cross: 'Punch_Cross',
-      hook: 'Melee_Hook',
-      // Kept as a v0.1 compatibility alias until a retargeted kick is added.
-      kick: 'Melee_Hook',
-      'hit-face': 'Hit_Head',
-      fall: 'Death_D'
-    },
-    contacts: {
-      punch: {
-        impactTimeMs: 292,
-        effectorBone: 'hand_l',
-        targetBone: 'head',
-        responseClip: 'hit-face'
-      }
-    }
-  },
-  'game-ready-soldier': {
-    id: 'game-ready-soldier',
-    url: '/assets/characters/Soldier.glb',
-    label: 'Vanguard Soldier · three.js / Mixamo sample',
-    proportion: 'human-realistic',
-    fidelity: 'game-ready',
-    authoredBounds: { minY: 0, maxY: 1.8 },
-    clips: {
-      idle: 'Idle',
-      guard: 'Idle',
-      walk: 'Walk',
-      march: 'Walk',
-      run: 'Run',
-      stretch: 'Idle',
-      dance: 'Idle',
-      'side-step': 'Walk',
-      'jumping-jacks': 'Idle',
-      crouch: 'Idle',
-      pushup: 'Idle',
-      cooldown: 'Idle',
-      punch: 'Idle',
-      cross: 'Idle',
-      hook: 'Idle',
-      kick: 'Idle',
-      'hit-face': 'Idle',
-      fall: 'Idle'
-    },
-    bones: {
-      head: 'mixamorigHead',
-      hand_l: 'mixamorigLeftHand',
-      hand_r: 'mixamorigRightHand',
-      foot_l: 'mixamorigLeftFoot',
-      foot_r: 'mixamorigRightFoot'
-    }
-  },
-  'robot-expressive': {
-    id: 'robot-expressive',
-    url: '/assets/characters/RobotExpressive.glb',
-    label: 'Robot Expressive · CC0',
-    authoredBounds: { minY: -0.0203044343, maxY: 4.7711189772 },
-    clips: {
-      idle: 'Idle',
-      guard: 'Idle',
-      walk: 'Walking',
-      march: 'Walking',
-      run: 'Running',
-      stretch: 'Yes',
-      dance: 'Dance',
-      'side-step': 'Walking',
-      'jumping-jacks': 'Jump',
-      crouch: 'Sitting',
-      pushup: 'Sitting',
-      cooldown: 'Idle',
-      punch: 'Punch',
-      cross: 'Punch',
-      hook: 'Punch',
-      kick: 'Jump',
-      'hit-face': 'No',
-      fall: 'Death'
-    }
-  },
-  humanoid: { alias: 'human-mannequin' },
-  'humanoid-male': { alias: 'human-mannequin' },
-  'humanoid-female': { alias: 'human-mannequin' }
-}
-
-const resolveCatalogEntry = modelId => {
-  const entry = CHARACTER_CATALOG[modelId]
-  if (!entry) return null
-  return entry.alias ? CHARACTER_CATALOG[entry.alias] : entry
-}
+export { CHARACTER_CATALOG }
 
 const normalizedClipTime = (clip, elapsedMs, loop) => {
   const seconds = Math.max(0, elapsedMs / 1000)
@@ -120,10 +13,12 @@ const normalizedClipTime = (clip, elapsedMs, loop) => {
 
 const tintMaterial = (material, tint, renderStyle) => {
   const result = material.clone()
-  const cinematic = renderStyle === 'cinematic'
+  const cinematic = renderStyle === 'cinematic' || renderStyle === 'cinematic-outline'
+  const wireframe = renderStyle === 'wireframe'
   if (result.color) result.color.lerp(tint, cinematic ? 0.1 : 0.62)
   if ('roughness' in result) result.roughness = cinematic ? Math.max(0.42, result.roughness ?? 0.72) : 1
   if ('metalness' in result && !cinematic) result.metalness = 0
+  result.wireframe = wireframe
   if (!material.side || material.side === THREE.FrontSide) result.side = THREE.FrontSide
   return result
 }
@@ -148,12 +43,14 @@ export class CharacterRuntime {
     this.mixer = new THREE.AnimationMixer(this.model)
     this.clips = new Map(template.animations.map(clip => [clip.name, clip]))
     this.actions = new Map()
+    this.morphTargets = []
     this.lastSample = null
     const tint = new THREE.Color(entity.color)
 
     this.model.traverse(child => {
       if (child.geometry) child.geometry.userData.assetShared = true
       if (!child.isMesh) return
+      if (child.morphTargetDictionary && child.morphTargetInfluences) this.morphTargets.push(child)
       child.castShadow = true
       child.receiveShadow = true
       child.frustumCulled = false
@@ -194,8 +91,11 @@ export class CharacterRuntime {
   }
 
   resolveClip(semanticName) {
-    const assetName = this.config.clips[semanticName] ?? semanticName
-    return this.clips.get(assetName) ?? this.clips.get('Idle_A') ?? this.clips.get('Idle') ?? this.clips.values().next().value
+    const mapping = getModelAction(this.config.id, semanticName)
+    if (!mapping) throw new Error(`Character '${this.config.id}' does not support action '${semanticName}'`)
+    const clip = this.clips.get(mapping.asset)
+    if (!clip) throw new Error(`Character '${this.config.id}' catalog references missing clip '${mapping.asset}'`)
+    return { clip, mapping }
   }
 
   actionFor(clip) {
@@ -204,8 +104,8 @@ export class CharacterRuntime {
   }
 
   configureAction(sample, weight) {
-    const clip = this.resolveClip(sample.clip)
-    if (!clip || weight <= 0) return null
+    if (weight <= 0) return null
+    const { clip, mapping } = this.resolveClip(sample.clip)
     const action = this.actionFor(clip)
     action.reset()
     action.enabled = true
@@ -215,7 +115,62 @@ export class CharacterRuntime {
     action.setEffectiveWeight(weight)
     action.play()
     action.time = normalizedClipTime(clip, sample.elapsedMs, sample.loop)
-    return { semantic: sample.clip, asset: clip.name, time: action.time, weight }
+    return { semantic: sample.clip, asset: clip.name, time: action.time, weight, overlay: mapping.overlay }
+  }
+
+  resetSpeechMorphs() {
+    for (const mesh of this.morphTargets) {
+      for (const [name, index] of Object.entries(mesh.morphTargetDictionary)) {
+        if (/jawopen|mouthopen|viseme_aa|viseme_oh/i.test(name)) mesh.morphTargetInfluences[index] = 0
+      }
+    }
+  }
+
+  applyOverlay(sample) {
+    if (!sample.overlay || sample.weight <= 0) return
+    const phase = sample.time * Math.PI * 2
+    const head = this.resolveBone('head')
+    const upperArmLeft = this.resolveBone('upper_arm_l')
+    const upperArmRight = this.resolveBone('upper_arm_r')
+    const lowerArmRight = this.resolveBone('lower_arm_r')
+    if (sample.overlay === 'talk') {
+      if (head) {
+        head.rotation.y += Math.sin(phase * 0.47) * 0.06 * sample.weight
+        head.rotation.x += Math.sin(phase * 0.91) * 0.025 * sample.weight
+      }
+      if (upperArmLeft) upperArmLeft.rotation.z -= (0.1 + Math.sin(phase * 0.73) * 0.08) * sample.weight
+      if (upperArmRight) upperArmRight.rotation.z += (0.1 + Math.sin(phase * 0.61) * 0.08) * sample.weight
+      const mouth = 0.15 + Math.abs(Math.sin(phase * 1.7)) * 0.55
+      for (const mesh of this.morphTargets) {
+        for (const [name, index] of Object.entries(mesh.morphTargetDictionary)) {
+          if (/jawopen|mouthopen|viseme_aa|viseme_oh/i.test(name)) mesh.morphTargetInfluences[index] = mouth * sample.weight
+        }
+      }
+    } else if (sample.overlay === 'reach') {
+      const reach = Math.sin(Math.min(1, sample.time / 0.8) * Math.PI / 2) * sample.weight
+      if (upperArmRight) upperArmRight.rotation.x -= 1.15 * reach
+      if (upperArmRight) upperArmRight.rotation.z += 0.2 * reach
+      if (lowerArmRight) lowerArmRight.rotation.x += 0.25 * reach
+    } else if (sample.overlay === 'look-around' && head) {
+      head.rotation.y += Math.sin(phase * 0.32) * 0.48 * sample.weight
+      head.rotation.x += Math.sin(phase * 0.19) * 0.08 * sample.weight
+    }
+  }
+
+  applyGaze(target, strength = 1) {
+    const head = this.resolveBone('head')
+    if (!head?.parent) return false
+    const headPosition = head.getWorldPosition(new THREE.Vector3())
+    const direction = target.clone().sub(headPosition)
+    if (direction.lengthSq() < 0.000001) return false
+    const parentWorldRotation = head.parent.getWorldQuaternion(new THREE.Quaternion()).invert()
+    direction.applyQuaternion(parentWorldRotation).normalize()
+    const yaw = Math.atan2(direction.x, Math.max(0.0001, direction.z))
+    const pitch = -Math.atan2(direction.y, Math.max(0.0001, Math.hypot(direction.x, direction.z)))
+    head.rotation.y += THREE.MathUtils.clamp(yaw, -0.75, 0.75) * strength
+    head.rotation.x += THREE.MathUtils.clamp(pitch, -0.4, 0.4) * strength
+    head.updateMatrixWorld(true)
+    return true
   }
 
   sample(clipState) {
@@ -233,8 +188,10 @@ export class CharacterRuntime {
     const currentSample = this.configureAction(current, blendAlpha)
     if (currentSample) sampled.push(currentSample)
     this.mixer.update(0)
+    this.resetSpeechMorphs()
+    for (const sample of sampled) this.applyOverlay(sample)
     this.model.updateMatrixWorld(true)
-    this.lastSample = sampled
+    this.lastSample = sampled.map(({ overlay, ...sample }) => sample)
   }
 
   dispose() {
@@ -253,7 +210,8 @@ export class CharacterAssetManager {
   }
 
   async load(modelId) {
-    const config = resolveCatalogEntry(modelId)
+    const resolved = resolveModel(modelId)
+    const config = resolved?.definition
     if (!config) throw new Error(`Unknown character asset '${modelId}'`)
     if (!this.templates.has(config.url)) {
       this.templates.set(config.url, this.loadTemplate(config))

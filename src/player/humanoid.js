@@ -90,7 +90,19 @@ export const resetPose = rig => {
   rig.rightLeg.knee.rotation.set(0, 0, 0)
 }
 
-const clipDuration = { idle: 1600, guard: 1200, walk: 900, run: 620, punch: 720, kick: 900, 'hit-face': 780, fall: 1100 }
+const clipDuration = {
+  idle: 1600,
+  guard: 1200,
+  walk: 900,
+  run: 620,
+  punch: 720,
+  kick: 900,
+  'hit-face': 780,
+  fall: 1100,
+  talk: 1200,
+  reach: 900,
+  'look-around': 1800
+}
 
 const normalizedTime = clipState => {
   const duration = clipDuration[clipState.clip] ?? 1000
@@ -147,5 +159,17 @@ export const applyProceduralClip = (rig, clipState) => {
     rig.bodyRoot.position.set(0.42 * fall, -0.55 * fall, 0)
     rig.leftArm.shoulder.rotation.x = -0.8 * fall
     rig.rightArm.shoulder.rotation.x = 0.7 * fall
+  } else if (clipState.clip === 'talk') {
+    rig.headPivot.rotation.y = Math.sin(phase * Math.PI * 1.4) * 0.08
+    rig.headPivot.rotation.x = Math.sin(phase * Math.PI * 2.2) * 0.035
+    rig.leftArm.shoulder.rotation.z = -0.2 - wave * 0.08
+    rig.rightArm.shoulder.rotation.z = 0.2 + Math.sin(phase * Math.PI * 1.7) * 0.08
+  } else if (clipState.clip === 'reach') {
+    const reach = Math.sin(Math.min(1, phase) * Math.PI / 2)
+    rig.rightArm.shoulder.rotation.set(-1.25 * reach, 0, 0.18)
+    rig.rightArm.elbow.rotation.x = -0.25 * reach
+  } else if (clipState.clip === 'look-around') {
+    rig.headPivot.rotation.y = Math.sin(phase * Math.PI * 2) * 0.5
+    rig.headPivot.rotation.x = Math.sin(phase * Math.PI) * 0.08
   }
 }

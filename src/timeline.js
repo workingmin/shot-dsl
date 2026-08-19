@@ -40,12 +40,17 @@ export const evaluateTimeline = (ir, timeMs) => {
 
   let activeCameraId = Object.values(ir.entities).find(entity => entity.kind === 'camera')?.id ?? null
   const clipEvents = new Map()
+  const gazes = new Map()
   for (const event of ir.events) {
     if (event.timeMs > clampedTime) break
     if (event.type === 'cameraCut') activeCameraId = event.cameraId
     if (event.type === 'playClip') {
       const active = clipEvents.get(event.actorId)
       clipEvents.set(event.actorId, { current: event, previous: active?.current ?? null })
+    }
+    if (event.type === 'gaze') {
+      if (clampedTime < event.timeMs + event.durationMs) gazes.set(event.actorId, { ...event, elapsedMs: clampedTime - event.timeMs })
+      else gazes.delete(event.actorId)
     }
   }
   const clips = new Map()
@@ -62,5 +67,5 @@ export const evaluateTimeline = (ir, timeMs) => {
     }
     clips.set(actorId, current)
   }
-  return { timeMs: clampedTime, values, activeCameraId, clips }
+  return { timeMs: clampedTime, values, activeCameraId, clips, gazes }
 }

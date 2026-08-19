@@ -97,7 +97,9 @@ function tick(timestamp) {
 
 const renderDiagnostics = diagnostics => {
   elements.diagnostics.replaceChildren()
-  elements.diagnosticCount.textContent = diagnostics.length ? `${diagnostics.length} error${diagnostics.length === 1 ? '' : 's'}` : '0 errors'
+  const errors = diagnostics.filter(item => item.severity !== 'warning').length
+  const warnings = diagnostics.filter(item => item.severity === 'warning').length
+  elements.diagnosticCount.textContent = diagnostics.length ? `${errors} errors · ${warnings} warnings` : '0 errors · 0 warnings'
   if (diagnostics.length === 0) {
     const ok = document.createElement('div')
     ok.className = 'diagnostic-ok'
@@ -107,7 +109,7 @@ const renderDiagnostics = diagnostics => {
   }
   for (const item of diagnostics) {
     const row = document.createElement('div')
-    row.className = 'diagnostic'
+    row.className = `diagnostic${item.severity === 'warning' ? ' diagnostic-warning' : ''}`
     const code = document.createElement('span')
     code.className = 'diagnostic-code'
     code.textContent = `${item.code} · L${item.line}`
@@ -122,9 +124,9 @@ const renderEventTrack = ir => {
   elements.eventTrack.replaceChildren()
   for (const event of ir.events) {
     const marker = document.createElement('span')
-    marker.className = `event-marker ${event.type === 'cameraCut' ? 'cut-event' : 'play-event'}`
+    marker.className = `event-marker ${event.type === 'cameraCut' ? 'cut-event' : event.type === 'gaze' ? 'gaze-event' : 'play-event'}`
     marker.style.left = `${event.timeMs / ir.scene.durationMs * 100}%`
-    marker.dataset.label = event.type === 'cameraCut' ? `CUT ${event.cameraId}` : `${event.actorId}:${event.clip}`
+    marker.dataset.label = event.type === 'cameraCut' ? `CUT ${event.cameraId}` : event.type === 'gaze' ? `GAZE ${event.actorId}` : `${event.actorId}:${event.clip}`
     marker.title = `${formatTime(event.timeMs)} · ${marker.dataset.label}`
     elements.eventTrack.append(marker)
   }
@@ -143,7 +145,8 @@ const compile = async () => {
     player.cancelPendingLoad()
     setPlaying(false)
     elements.loading.hidden = true
-    setStatus('error', `编译失败 · ${result.diagnostics.length} 个问题`)
+    const errors = result.diagnostics.filter(item => item.severity !== 'warning').length
+    setStatus('error', `编译失败 · ${errors} 个错误`)
     return
   }
 
@@ -161,8 +164,12 @@ const compile = async () => {
   renderEventTrack(activeIr)
   seek(0)
   elements.loading.hidden = true
-  const warning = player.assetWarnings.length ? ` · ${player.assetWarnings.length} fallback` : ''
-  setStatus('ready', `骨骼动画就绪 · ${(performance.now() - started).toFixed(1)} ms${warning}`)
+  const compileWarnings = result.diagnostics.filter(item => item.severity === 'warning').length
+  const warning = [
+    compileWarnings ? `${compileWarnings} compatibility warnings` : '',
+    player.assetWarnings.length ? `${player.assetWarnings.length} fallback` : ''
+  ].filter(Boolean).join(' · ')
+  setStatus('ready', `骨骼动画就绪 · ${(performance.now() - started).toFixed(1)} ms${warning ? ` · ${warning}` : ''}`)
   window.__SHOT_DSL_APP__.compileCount += 1
 }
 
@@ -256,6 +263,7 @@ window.__SHOT_DSL_APP__ = {
       characterMetrics: stats.characterMetrics ?? [],
       characterSamples: stats.characterSamples ?? [],
       activeCameraFrame: stats.activeCameraFrame ?? null,
+      activeGazes: stats.activeGazes ?? [],
       fallbackActors: stats.fallbackActors ?? 0
     }
   }

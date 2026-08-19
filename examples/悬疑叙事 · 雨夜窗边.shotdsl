@@ -1,0 +1,70 @@
+shotdsl 0.1
+
+scene rainy_window_suspense {
+  duration 15s
+  fps 30
+  seed 8834
+  style wireframe
+}
+
+actor person_d {
+  model "generic_female"
+  color white
+  position [0m, 0m, 0m]
+  rotation [0deg, 180deg, 0deg]
+}
+
+object photo_prop {
+  primitive box
+  size [0.15m, 0.2m, 0.002m]
+  color lightgray
+  position [0.25m, 1.45m, 0.3m]
+}
+
+object window_frame {
+  primitive box
+  size [3m, 2.4m, 0.12m]
+  color darkslategray
+  position [0m, 1.2m, -2.2m]
+}
+
+camera cam_ecu {
+  mode lookAt
+  fov 22deg
+  position [0.6m, 1.45m, 0.6m]
+  target object photo_prop
+  roll 0deg
+}
+
+camera cam_close {
+  mode lookAt
+  fov 32deg
+  position [1.2m, 1.45m, 1.8m]
+  target actor person_d bone "head"
+  roll 0deg
+}
+
+camera cam_wide_dolly {
+  mode lookAt
+  fov 50deg
+  position [2m, 1.5m, 3m]
+  target point [0m, 1.3m, 0m]
+  roll 0deg
+}
+
+timeline {
+  # 雨声与低沉悬疑音乐
+  cut 0s camera cam_ecu
+  play 0s actor person_d clip "idle" loop true
+
+  cut 3s camera cam_close
+  key 3s cam_close.position [1.2m, 1.45m, 1.8m]
+  key 7s cam_close.position [0.7m, 1.45m, 1.1m] ease smoothstep
+  play 3s actor person_d clip "look" loop true blend 0.2s
+  gaze 3s actor person_d target object photo_prop duration 4s strength 0.9
+
+  cut 7s camera cam_wide_dolly
+  key 7s cam_wide_dolly.position [2m, 1.5m, 3m]
+  key 15s cam_wide_dolly.position [4.2m, 1.5m, 5.8m] ease smoothstep
+  play 7.2s actor person_d clip "idle" loop true blend 0.2s
+}

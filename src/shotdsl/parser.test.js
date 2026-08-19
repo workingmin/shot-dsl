@@ -29,6 +29,14 @@ timeline {\n  key 1s hero.position [100cm, 0m, 0m]\n  key 0s hero.position [0m, 
   assert.deepEqual(result.ir.tracks[0].keys[1].value, [1, 0, 0])
 })
 
+test('hex colors are values while hash-prefixed prose remains a comment', () => {
+  const example = exampleForScene('night_extraction')
+  const result = compileShotDSL(example.source)
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
+  assert.equal(result.ir.entities.container_left.color, '#38444d')
+  assert.equal(result.ir.entities.container_right.color, '#473f3a')
+})
+
 test('compiler returns line-addressable diagnostics instead of guessing', () => {
   const source = `shotdsl 0.1
 scene broken {\n  duration 5\n  fps 24\n}
@@ -102,4 +110,27 @@ test('long calisthenics example compiles a six-minute multi-section timeline', (
   assert.equal(result.ir.events.filter(event => event.type === 'playClip').length, 45)
   assert.ok(result.ir.events.some(event => event.timeMs === 285000 && event.type === 'playClip' && event.clip === 'pushup'))
   assert.ok(result.ir.events.some(event => event.timeMs === 365000 && event.type === 'playClip' && event.clip === 'cooldown'))
+})
+
+test('compiler normalizes compatibility styles, action aliases and model presets with warnings', () => {
+  const example = exampleForScene('rainy_window_suspense')
+  const result = compileShotDSL(example.source)
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics))
+  assert.equal(result.ir.scene.style, 'wireframe')
+  assert.equal(result.ir.entities.person_d.model, 'human-mannequin')
+  assert.equal(result.ir.entities.person_d.requestedModel, 'generic_female')
+  assert.ok(result.ir.events.some(event => event.type === 'playClip' && event.clip === 'look-around' && event.requestedClip === 'look'))
+  assert.ok(result.ir.events.some(event => event.type === 'gaze' && event.actorId === 'person_d' && event.durationMs === 4000))
+  assert.ok(result.diagnostics.some(item => item.code === 'W_MODEL_ALIAS' && item.severity === 'warning'))
+  assert.ok(result.diagnostics.some(item => item.code === 'W_ACTION_ALIAS' && item.severity === 'warning'))
+})
+
+test('compiler rejects actions that the selected model cannot perform', () => {
+  const source = exampleForScene('night_extraction').source.replace(
+    'play 0s actor scout clip "idle" loop true',
+    'play 0s actor scout clip "punch" loop true'
+  )
+  const result = compileShotDSL(source)
+  assert.equal(result.ok, false)
+  assert.ok(result.diagnostics.some(item => item.code === 'E_MODEL_CLIP' && /game-ready-soldier/.test(item.message)))
 })
