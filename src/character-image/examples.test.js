@@ -1,20 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  CHARACTER_EXAMPLES,
-  DEFAULT_CHARACTER_EXAMPLE_ID,
-  getCharacterExample
-} from './examples.js'
+import { readCharacterImageExamples } from '../../scripts/example-files.mjs'
 
-test('character examples have stable unique ids and bounded generation prompts', () => {
-  assert.equal(CHARACTER_EXAMPLES.length, 5)
-  assert.equal(new Set(CHARACTER_EXAMPLES.map(example => example.id)).size, CHARACTER_EXAMPLES.length)
-  assert.ok(CHARACTER_EXAMPLES.every(example => /^[a-z0-9_]+$/.test(example.id)))
-  assert.ok(CHARACTER_EXAMPLES.every(example => example.label.length > 1))
-  assert.ok(CHARACTER_EXAMPLES.every(example => example.prompt.length >= 5 && example.prompt.length <= 360))
+const catalog = await readCharacterImageExamples()
+
+test('character-image directory contains stable unique example files and prompts', () => {
+  assert.equal(catalog.examples.length, 5)
+  assert.equal(new Set(catalog.examples.map(example => example.id)).size, catalog.examples.length)
+  assert.ok(catalog.examples.every(example => /^[a-z0-9_]+$/.test(example.id)))
+  assert.ok(catalog.examples.every(example => example.file.endsWith('.txt')))
+  assert.ok(catalog.examples.every(example => example.prompt.length >= 5 && example.prompt.length <= 360))
 })
 
-test('character examples expose a valid default and reject unknown ids', () => {
-  assert.equal(getCharacterExample(DEFAULT_CHARACTER_EXAMPLE_ID)?.id, DEFAULT_CHARACTER_EXAMPLE_ID)
-  assert.equal(getCharacterExample('missing'), null)
+test('character-image manifest points to a valid default example', () => {
+  assert.ok(catalog.examples.some(example => example.id === catalog.defaultExampleId))
 })

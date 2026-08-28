@@ -1,10 +1,6 @@
 import { createIcons, Download, RotateCcw, Sparkles } from 'lucide'
 import { CharacterImageRenderer } from './renderer.js'
-import {
-  CHARACTER_EXAMPLES,
-  DEFAULT_CHARACTER_EXAMPLE_ID,
-  getCharacterExample
-} from './examples.js'
+import { loadCharacterExamples } from './examples.js'
 
 const SAMPLE_MODEL_URL = '/assets/characters/HumanMannequin.glb'
 const DRAFT_KEY = 'shotdsl:character-image:draft'
@@ -54,6 +50,10 @@ let activeModelUrl = null
 let activeModelKind = null
 let activeJob = null
 let pollRevision = 0
+let characterExamples = []
+let defaultCharacterExampleId = null
+
+const getCharacterExample = id => characterExamples.find(example => example.id === id) ?? null
 
 const updateExampleQuery = id => {
   const url = new URL(window.location.href)
@@ -62,7 +62,7 @@ const updateExampleQuery = id => {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
-const matchPromptExample = prompt => CHARACTER_EXAMPLES.find(example => example.prompt === prompt) ?? null
+const matchPromptExample = prompt => characterExamples.find(example => example.prompt === prompt) ?? null
 
 const syncExampleSelection = ({ updateUrl = false } = {}) => {
   const example = matchPromptExample(elements.prompt.value)
@@ -73,7 +73,7 @@ const syncExampleSelection = ({ updateUrl = false } = {}) => {
 
 const populateExamples = () => {
   const fragment = document.createDocumentFragment()
-  for (const example of CHARACTER_EXAMPLES) {
+  for (const example of characterExamples) {
     const option = document.createElement('option')
     option.value = example.id
     option.textContent = example.label
@@ -261,9 +261,12 @@ window.__CHARACTER_IMAGE_APP__ = {
 
 const initialize = async () => {
   createIcons({ icons: { Download, RotateCcw, Sparkles }, attrs: { 'stroke-width': 1.8 } })
+  const catalog = await loadCharacterExamples()
+  characterExamples = catalog.examples
+  defaultCharacterExampleId = catalog.defaultExampleId
   populateExamples()
   const requestedExample = getCharacterExample(new URLSearchParams(window.location.search).get('example'))
-  const defaultExample = getCharacterExample(DEFAULT_CHARACTER_EXAMPLE_ID)
+  const defaultExample = getCharacterExample(defaultCharacterExampleId)
   elements.prompt.value = requestedExample?.prompt ?? localStorage.getItem(DRAFT_KEY) ?? defaultExample.prompt
   updatePrompt()
   renderer = new CharacterImageRenderer(elements.canvas)

@@ -290,6 +290,7 @@ Character Asset Spec / prompt
 ```
 
 当前内置示例覆盖都市调查员、退休木匠、急诊医生、自行车快递员和近地轨道飞行员。示例只载入人物描述，不会自动发起可能产生费用的 Provider 生成任务；用户确认后再手动提交生成。
+示例源数据位于 `examples/character-image/`，与 `examples/storyboard/` 中的动态分镜示例分开管理；人物 manifest 只保留稳定 ID、显示名和文件名，具体描述放在独立 `.txt` 文件中。
 
 本地草稿分 namespace：
 

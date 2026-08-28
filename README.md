@@ -96,6 +96,8 @@ npm run smoke:character
 
 `npm run check` 执行资产审计、单元测试和生产构建；`npm run smoke` 和 `npm run smoke:character` 需要先运行本地服务，分别验证动态分镜与人物模块。
 
+两类可版本化的示例源文件分别放在 `examples/storyboard/` 和 `examples/character-image/`；构建后保持相同的子目录结构并生成各自的 manifest。
+
 ## 视频导出说明
 
 当前使用浏览器 `MediaRecorder` 导出 WebM，并按场景 fps 逐帧推进确定性时间轴。导出期间需要按成片时长实时录制。后续若需要更快的离线导出、MP4、音频同步或精确码控，应引入 WebCodecs + muxer 或服务端 FFmpeg。

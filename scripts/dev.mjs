@@ -3,7 +3,7 @@ import { cp, mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { context } from 'esbuild'
 import { createCharacterAssetsApi } from './character-assets-api.mjs'
-import { exampleSourceDirectory, syncExamples } from './example-files.mjs'
+import { exampleSourceDirectories, syncExamples } from './example-files.mjs'
 import { createStaticServer } from './server-lib.mjs'
 
 const root = resolve(import.meta.dirname, '..')
@@ -43,16 +43,17 @@ const server = createStaticServer({
   requestHandler
 })
 let exampleSyncTimer = null
-const exampleWatcher = watch(exampleSourceDirectory, () => {
+const scheduleExampleSync = () => {
   clearTimeout(exampleSyncTimer)
   exampleSyncTimer = setTimeout(() => {
     syncExamples(resolve(output, 'examples')).catch(error => console.error(`Example sync failed: ${error.message}`))
   }, 80)
-})
+}
+const exampleWatchers = exampleSourceDirectories.map(directory => watch(directory, scheduleExampleSync))
 
 const shutdown = async () => {
   clearTimeout(exampleSyncTimer)
-  exampleWatcher.close()
+  for (const watcher of exampleWatchers) watcher.close()
   await buildContext.dispose()
   server.close()
 }

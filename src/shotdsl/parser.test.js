@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readExamples } from '../../scripts/example-files.mjs'
+import { readStoryboardExamples } from '../../scripts/example-files.mjs'
 import { compileShotDSL } from './parser.js'
 
-const examples = await readExamples()
+const examples = await readStoryboardExamples()
 const exampleForScene = sceneId => examples.find(example => example.source.includes(`scene ${sceneId} {`))
 
 test('all focused storyboard examples compile into deterministic Scene IR', () => {

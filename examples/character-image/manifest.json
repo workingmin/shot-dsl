@@ -1,0 +1,30 @@
+{
+  "defaultExampleId": "urban_investigator",
+  "examples": [
+    {
+      "id": "urban_investigator",
+      "label": "都市调查员",
+      "file": "urban_investigator.txt"
+    },
+    {
+      "id": "retired_carpenter",
+      "label": "退休木匠",
+      "file": "retired_carpenter.txt"
+    },
+    {
+      "id": "emergency_doctor",
+      "label": "急诊医生",
+      "file": "emergency_doctor.txt"
+    },
+    {
+      "id": "bicycle_courier",
+      "label": "自行车快递员",
+      "file": "bicycle_courier.txt"
+    },
+    {
+      "id": "orbital_pilot",
+      "label": "近地轨道飞行员",
+      "file": "orbital_pilot.txt"
+    }
+  ]
+}
