@@ -60,7 +60,7 @@ npm install
 npm run dev
 ```
 
-浏览器打开 `http://127.0.0.1:4173`。
+浏览器打开 `http://127.0.0.1:4173/storyboard/`。根路径 `/` 会自动重定向到动态分镜编辑器。
 
 ```bash
 npm run check

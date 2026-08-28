@@ -15,7 +15,16 @@ const contentTypes = {
 
 export const createStaticServer = ({ root, port = 4173, host = '127.0.0.1' }) => {
   const server = createServer(async (request, response) => {
-    const pathname = new URL(request.url, `http://${request.headers.host}`).pathname
+    const url = new URL(request.url, `http://${request.headers.host}`)
+    const { pathname } = url
+    if (pathname === '/' || pathname === '/storyboard') {
+      response.writeHead(302, {
+        Location: `/storyboard/${url.search}`,
+        'Cache-Control': 'no-store'
+      })
+      response.end()
+      return
+    }
     const safePath = normalize(decodeURIComponent(pathname)).replace(/^(\.\.(\/|\\|$))+/, '')
     let filePath = join(root, safePath === '/' ? 'index.html' : safePath)
     try {
@@ -28,6 +37,6 @@ export const createStaticServer = ({ root, port = 4173, host = '127.0.0.1' }) =>
       response.end('Not found')
     }
   })
-  server.listen(port, host, () => process.stdout.write(`Shot DSL: http://${host}:${port}\n`))
+  server.listen(port, host, () => process.stdout.write(`Shot DSL: http://${host}:${port}/storyboard/\n`))
   return server
 }

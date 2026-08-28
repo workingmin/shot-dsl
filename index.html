@@ -3,98 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
-    <title>Shot DSL · 3D 动态分镜</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <title>Shot DSL</title>
+    <link rel="canonical" href="/storyboard/" />
+    <script>
+      window.location.replace(`/storyboard/${window.location.search}${window.location.hash}`)
+    </script>
+    <meta http-equiv="refresh" content="0; url=/storyboard/" />
   </head>
   <body>
-    <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">BLACK &amp; WHITE · 3D BLOCKING · SHOT TIMING</p>
-          <h1>Shot DSL</h1>
-          <p class="product-goal">把静态纸质分镜升级为可回放的黑白线条 3D 动态分镜</p>
-        </div>
-        <div class="topbar-controls">
-          <label class="scene-selector" for="scene-example">
-            <span>场景示例</span>
-            <select id="scene-example" aria-label="选择场景示例"></select>
-          </label>
-          <div id="status" class="status" data-state="loading" role="status" aria-live="polite">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="status-text">正在初始化 3D 播放器…</span>
-          </div>
-        </div>
-      </header>
-
-      <section class="workspace" aria-label="Shot DSL 动态分镜工作区">
-        <article class="panel editor-panel">
-          <div class="panel-heading">
-            <div><span class="step">01</span><h2>编写 ShotDSL</h2></div>
-            <button id="clear-button" class="text-button" type="button">清空</button>
-          </div>
-
-          <label class="sr-only" for="dsl-input">ShotDSL 文本</label>
-          <textarea id="dsl-input" spellcheck="false" autocomplete="off"></textarea>
-
-          <div class="editor-footer">
-            <span>Ctrl / ⌘ + Enter：重新编译</span>
-            <span id="character-count">0 chars</span>
-          </div>
-
-          <section class="diagnostics-section" aria-live="polite">
-            <div class="section-label">
-              <span>编译诊断</span>
-              <span id="diagnostic-count">—</span>
-            </div>
-            <div id="diagnostics" class="diagnostics"></div>
-          </section>
-        </article>
-
-        <article class="panel preview-panel">
-          <div class="panel-heading">
-            <div><span class="step">02</span><h2>3D 动态分镜</h2></div>
-            <span id="render-stats" class="render-stats">—</span>
-          </div>
-
-          <div id="preview" class="preview-stage">
-            <canvas id="scene-canvas" aria-label="3D 分镜画面"></canvas>
-            <div class="frame-guides" aria-hidden="true"></div>
-            <div id="shot-label" class="shot-label">CAM —</div>
-            <div id="shot-note" class="shot-note" hidden></div>
-            <div id="loading-view" class="loading-view">
-              <div class="loader" aria-hidden="true"></div>
-              <p>正在准备场景</p>
-            </div>
-          </div>
-
-          <div class="transport" aria-label="播放控制">
-            <button id="play-button" class="play-button" type="button" aria-label="播放">▶</button>
-            <button id="restart-button" class="icon-button" type="button" aria-label="回到开头">↶</button>
-            <span id="current-time" class="timecode">00:00.000</span>
-            <input id="timeline" type="range" min="0" max="6000" step="1" value="0" aria-label="时间轴" />
-            <span id="duration" class="timecode">00:06.000</span>
-            <button id="export-button" class="export-button" type="button">导出帧</button>
-            <button id="export-video-button" class="export-button" type="button">导出视频</button>
-          </div>
-
-          <div class="event-track-wrap">
-            <div class="section-label"><span>镜头时间轴</span><span id="frame-label">F 000</span></div>
-            <div id="event-track" class="event-track"></div>
-          </div>
-
-          <details class="ir-panel">
-            <summary>Scene IR <span id="ir-summary"></span></summary>
-            <pre id="scene-ir"></pre>
-          </details>
-        </article>
-      </section>
-
-      <footer class="footer-note">
-        ShotDSL v0.1 · deterministic black-and-white 3D storyboard previs
-      </footer>
-    </main>
-
-    <script src="/assets/app.js" defer></script>
+    <p><a href="/storyboard/">打开 Shot DSL 动态分镜编辑器</a></p>
   </body>
 </html>

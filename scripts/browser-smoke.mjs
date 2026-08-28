@@ -104,6 +104,7 @@ const run = async () => {
   await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
 
   const initial = JSON.parse(await evaluate(`JSON.stringify({
+    pathname: window.location.pathname,
     app: window.__SHOT_DSL_APP__?.getState(),
     canvas: { width: document.querySelector('canvas')?.width, height: document.querySelector('canvas')?.height },
     loadingDisplay: getComputedStyle(document.querySelector('#loading-view')).display,
@@ -118,6 +119,7 @@ const run = async () => {
     Math.abs(metric.normalizedHeight - 1.78) < 0.001
   ))
   if (
+    initial.pathname !== '/storyboard/' ||
     !initial.app?.ready ||
     initial.app.sceneId !== 'forest_tracking_blocking' ||
     initial.app.renderStyle !== 'storyboard' ||
