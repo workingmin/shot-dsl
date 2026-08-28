@@ -1,12 +1,18 @@
 import { createIcons, Download, RotateCcw, Sparkles } from 'lucide'
 import { CharacterImageRenderer } from './renderer.js'
+import {
+  CHARACTER_EXAMPLES,
+  DEFAULT_CHARACTER_EXAMPLE_ID,
+  getCharacterExample
+} from './examples.js'
 
 const SAMPLE_MODEL_URL = '/assets/characters/HumanMannequin.glb'
 const DRAFT_KEY = 'shotdsl:character-image:draft'
-const DEFAULT_PROMPT = '一名成年女性调查员，黑色齐肩短发，深绿色工装夹克，灰色长裤，黑色短靴，写实比例，自然站立'
+const CUSTOM_EXAMPLE_ID = 'custom'
 
 const elements = {
   form: document.querySelector('#generation-form'),
+  example: document.querySelector('#character-example'),
   prompt: document.querySelector('#character-prompt'),
   promptCount: document.querySelector('#prompt-count'),
   providerStatus: document.querySelector('#provider-status'),
@@ -48,6 +54,37 @@ let activeModelUrl = null
 let activeModelKind = null
 let activeJob = null
 let pollRevision = 0
+
+const updateExampleQuery = id => {
+  const url = new URL(window.location.href)
+  if (id === CUSTOM_EXAMPLE_ID) url.searchParams.delete('example')
+  else url.searchParams.set('example', id)
+  window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+const matchPromptExample = prompt => CHARACTER_EXAMPLES.find(example => example.prompt === prompt) ?? null
+
+const syncExampleSelection = ({ updateUrl = false } = {}) => {
+  const example = matchPromptExample(elements.prompt.value)
+  const id = example?.id ?? CUSTOM_EXAMPLE_ID
+  elements.example.value = id
+  if (updateUrl) updateExampleQuery(id)
+}
+
+const populateExamples = () => {
+  const fragment = document.createDocumentFragment()
+  for (const example of CHARACTER_EXAMPLES) {
+    const option = document.createElement('option')
+    option.value = example.id
+    option.textContent = example.label
+    fragment.append(option)
+  }
+  const custom = document.createElement('option')
+  custom.value = CUSTOM_EXAMPLE_ID
+  custom.textContent = '自定义描述'
+  fragment.append(custom)
+  elements.example.replaceChildren(fragment)
+}
 
 const setRenderStatus = (state, text) => {
   elements.renderStatus.dataset.state = state
@@ -104,10 +141,11 @@ const loadSample = () => loadModel({
   kind: 'sample'
 })
 
-const updatePrompt = () => {
+const updatePrompt = ({ updateUrl = false } = {}) => {
   const value = elements.prompt.value
   elements.promptCount.textContent = `${value.length} / 360`
   localStorage.setItem(DRAFT_KEY, value)
+  syncExampleSelection({ updateUrl })
   elements.generate.disabled = !providerConfigured || value.trim().length < 5 || Boolean(activeJob && activeJob.status !== 'ready' && activeJob.status !== 'failed')
 }
 
@@ -171,7 +209,14 @@ elements.form.addEventListener('submit', event => {
   event.preventDefault()
   if (!elements.generate.disabled) generateCharacter()
 })
-elements.prompt.addEventListener('input', updatePrompt)
+elements.example.addEventListener('change', () => {
+  const example = getCharacterExample(elements.example.value)
+  if (!example) return
+  elements.prompt.value = example.prompt
+  updatePrompt({ updateUrl: true })
+  elements.prompt.focus()
+})
+elements.prompt.addEventListener('input', () => updatePrompt({ updateUrl: true }))
 elements.reset.addEventListener('click', () => {
   pollRevision += 1
   activeJob = null
@@ -216,7 +261,10 @@ window.__CHARACTER_IMAGE_APP__ = {
 
 const initialize = async () => {
   createIcons({ icons: { Download, RotateCcw, Sparkles }, attrs: { 'stroke-width': 1.8 } })
-  elements.prompt.value = localStorage.getItem(DRAFT_KEY) ?? DEFAULT_PROMPT
+  populateExamples()
+  const requestedExample = getCharacterExample(new URLSearchParams(window.location.search).get('example'))
+  const defaultExample = getCharacterExample(DEFAULT_CHARACTER_EXAMPLE_ID)
+  elements.prompt.value = requestedExample?.prompt ?? localStorage.getItem(DRAFT_KEY) ?? defaultExample.prompt
   updatePrompt()
   renderer = new CharacterImageRenderer(elements.canvas)
   await loadSample()

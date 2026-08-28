@@ -86,6 +86,8 @@ const run = async () => {
     canvas: { width: document.querySelector('canvas').width, height: document.querySelector('canvas').height },
     loadingHidden: document.querySelector('#viewer-loading').hidden,
     promptLength: document.querySelector('#character-prompt').value.length,
+    example: document.querySelector('#character-example').value,
+    exampleCount: document.querySelectorAll('#character-example option').length,
     viewButtons: document.querySelectorAll('[data-view]').length,
     layout: (() => {
       const stage = document.querySelector('#character-stage').getBoundingClientRect()
@@ -103,11 +105,29 @@ const run = async () => {
     initial.canvas.height < 350 ||
     !initial.loadingHidden ||
     initial.promptLength < 5 ||
+    initial.exampleCount !== 6 ||
+    initial.example === 'custom' ||
     initial.viewButtons !== 4 ||
     initial.layout.stageLeft < -1 ||
     initial.layout.stageRight > initial.layout.viewportWidth + 1 ||
     initial.layout.exportRight > initial.layout.viewportWidth + 1
   ) throw new Error(`Initial character viewer assertion failed: ${JSON.stringify(initial)}`)
+
+  const selectedExample = JSON.parse(await evaluate(`(() => {
+    const select = document.querySelector('#character-example')
+    select.value = 'retired_carpenter'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+    return JSON.stringify({
+      example: select.value,
+      prompt: document.querySelector('#character-prompt').value,
+      query: location.search
+    })
+  })()`))
+  if (
+    selectedExample.example !== 'retired_carpenter' ||
+    !selectedExample.prompt.includes('退休木匠') ||
+    selectedExample.query !== '?example=retired_carpenter'
+  ) throw new Error(`Character example selection failed: ${JSON.stringify(selectedExample)}`)
 
   const frontFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (frontFrame.length < 10000) throw new Error(`Character canvas is unexpectedly small: ${frontFrame.length}`)

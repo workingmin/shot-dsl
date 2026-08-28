@@ -286,8 +286,10 @@ Character Asset Spec / prompt
 初期示例使用短 query，不把完整 DSL 放进 URL：
 
 ```text
-/character-image/?example=reach_pose
+/character-image/?example=urban_investigator
 ```
+
+当前内置示例覆盖都市调查员、退休木匠、急诊医生、自行车快递员和近地轨道飞行员。示例只载入人物描述，不会自动发起可能产生费用的 Provider 生成任务；用户确认后再手动提交生成。
 
 本地草稿分 namespace：
 
