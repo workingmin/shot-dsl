@@ -29,6 +29,16 @@
 - 播放、暂停、回到开头、任意拖拽和 PNG 当前帧导出；
 - 浏览器 WebM 视频导出。
 
+实验性的 `/character-image/` 人物模块当前提供：
+
+- 保留 GLB 原始肤色、服装颜色和 PBR 贴图的静态人物查看器；
+- 自由、正面、侧面和背面视图；
+- 正面、侧面、背面合成三视图 PNG 导出；
+- 通过服务端 Meshy Text to 3D preview/refine 任务从自由文本生成人物；
+- 生成任务和 GLB 资产在 `.shotdsl-data/` 中持久化，浏览器不接触 Provider API key。
+
+当前内置人物只是用于离线验证查看器和导出的 CC0 代理资产。写实人物生成需要配置 Meshy，生成质量和费用由供应商服务决定；当前仅校验 GLB 格式和大小，尚未完成自动人体骨架、静态站姿和资产许可门禁。
+
 输入层记录分镜设计，不记录每帧数据。作者描述镜头、实体、beat、关键状态和事件；编译器生成关键帧轨道与离散事件组成的 Scene IR；播放器在播放或导出时按目标帧率求值。
 
 ## 架构
@@ -60,26 +70,42 @@ npm install
 npm run dev
 ```
 
-浏览器打开 `http://127.0.0.1:4173/storyboard/`。根路径 `/` 会自动重定向到动态分镜编辑器。
+浏览器入口：
+
+```text
+http://127.0.0.1:4173/storyboard/
+http://127.0.0.1:4173/character-image/
+```
+
+如需启用自由文本人物生成，在项目根目录创建 `.env` 并设置：
+
+```dotenv
+MESHY_API_KEY=your_server_side_key
+```
+
+未配置密钥时，人物模块不会发起生成请求，仍可查看示例人物并导出三视图。Meshy 任务可能产生费用，密钥只能配置在服务端环境变量中。
+
+根路径 `/` 会自动重定向到动态分镜编辑器。
 
 ```bash
 npm run check
 npm run smoke
+npm run smoke:character
 ```
 
-`npm run check` 执行资产审计、单元测试和生产构建；`npm run smoke` 需要先运行本地服务，用于验证浏览器加载、播放、seek、文字标注、道具交互和画布输出。
+`npm run check` 执行资产审计、单元测试和生产构建；`npm run smoke` 和 `npm run smoke:character` 需要先运行本地服务，分别验证动态分镜与人物模块。
 
 ## 视频导出说明
 
 当前使用浏览器 `MediaRecorder` 导出 WebM，并按场景 fps 逐帧推进确定性时间轴。导出期间需要按成片时长实时录制。后续若需要更快的离线导出、MP4、音频同步或精确码控，应引入 WebCodecs + muxer 或服务端 FFmpeg。
 
-## 明确不做
+## 动态分镜明确不做
 
-- 游戏级拟真人物和服装选角；
-- 电影级 PBR 材质、环境反射和复杂灯光；
+- 把 character-image 的写实人物直接带入动态分镜；
+- 动态分镜中的电影级 PBR 材质、环境反射和复杂灯光；
 - 战斗特写、粒子、武器和表情系统；
 - 完整刚体、布料和人体动力学；
-- 自动生成 3D 资产；
+- 把未经人体和许可门禁的生成资产作为可动画角色；
 - 专业 Agent 调度工作流；
 - 非线性剪辑和多人实时协作。
 
@@ -88,3 +114,4 @@ npm run smoke
 - [技术可行性与实施路线](docs/feasibility.md)
 - [ShotDSL v0.1](docs/shotdsl-v0.1.md)
 - [当前支持矩阵](docs/support-matrix.md)
+- [人物 3D 展示模型层设计](docs/character-image-model-design.md)

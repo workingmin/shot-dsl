@@ -2,6 +2,7 @@
 node_modules/
 dist/
 coverage/
+.shotdsl-data/
 *.tsbuildinfo
 
 # Environment and logs

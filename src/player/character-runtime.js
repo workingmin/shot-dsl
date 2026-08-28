@@ -11,18 +11,30 @@ const normalizedClipTime = (clip, elapsedMs, loop) => {
   return loop ? seconds % clip.duration : Math.min(seconds, Math.max(0, clip.duration - 1 / 120))
 }
 
-const storyboardMaterial = material => {
+export const cloneCharacterMaterial = material => {
   const result = material.clone()
-  if (result.color) result.color.set('#e8e8e3')
-  if ('roughness' in result) result.roughness = 1
-  if ('metalness' in result) result.metalness = 0
-  result.map = null
-  result.normalMap = null
-  result.roughnessMap = null
-  result.metalnessMap = null
   result.wireframe = false
-  if (!material.side || material.side === THREE.FrontSide) result.side = THREE.FrontSide
   return result
+}
+
+const overrideStoryboardMaterial = material => {
+  if (material.color) material.color.set('#e8e8e3')
+  if ('roughness' in material) material.roughness = 1
+  if ('metalness' in material) material.metalness = 0
+  material.map = null
+  material.normalMap = null
+  material.roughnessMap = null
+  material.metalnessMap = null
+  material.wireframe = false
+  material.needsUpdate = true
+}
+
+export const applyStoryboardMaterialOverride = model => {
+  model.traverse(child => {
+    if (!child.isMesh) return
+    if (Array.isArray(child.material)) child.material.forEach(overrideStoryboardMaterial)
+    else if (child.material) overrideStoryboardMaterial(child.material)
+  })
 }
 
 const measureCharacterBounds = model => {
@@ -54,8 +66,8 @@ export class CharacterRuntime {
       child.castShadow = true
       child.receiveShadow = true
       child.frustumCulled = false
-      if (Array.isArray(child.material)) child.material = child.material.map(storyboardMaterial)
-      else child.material = storyboardMaterial(child.material)
+      if (Array.isArray(child.material)) child.material = child.material.map(cloneCharacterMaterial)
+      else child.material = cloneCharacterMaterial(child.material)
     })
 
     // Measure the authored mesh envelope before sampling animation. This avoids

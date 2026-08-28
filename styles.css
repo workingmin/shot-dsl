@@ -27,6 +27,10 @@ h2 { display: inline; margin: 0; font-size: 15px; letter-spacing: 0; }
 .product-goal { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
 
 .topbar-controls { display: grid; min-width: 270px; gap: 11px; justify-items: end; }
+.module-links { display: flex; border: 1px solid var(--line); padding: 3px; background: #f4f4ef; }
+.module-links a, .module-links span { padding: 5px 9px; color: var(--muted); text-decoration: none; font-size: 10px; }
+.module-links a:hover { color: var(--ink); }
+.module-links [aria-current="page"] { background: var(--ink); color: #fff; }
 .scene-selector { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
 .scene-selector select { width: 210px; border: 1px solid #b9b9ae; border-radius: 3px; outline: none; padding: 7px 30px 7px 9px; color: var(--ink); background: #fafaf6; cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: 0; }
 .scene-selector select:hover { border-color: #77786f; }
@@ -114,6 +118,7 @@ textarea:focus { border-color: #77786f; box-shadow: 0 0 0 3px rgb(30 31 26 / 5%)
   .app-shell { width: 100%; padding: 14px 0 0; }
   .topbar { flex-direction: column; gap: 14px; padding: 0 14px; }
   .topbar-controls { width: 100%; min-width: 0; }
+  .module-links { justify-self: start; }
   .scene-selector { width: 100%; justify-content: space-between; }
   .scene-selector select { width: min(210px, 68vw); }
   .panel { padding: 14px; }

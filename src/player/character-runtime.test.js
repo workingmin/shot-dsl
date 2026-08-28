@@ -2,8 +2,48 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { CHARACTER_CATALOG } from './character-runtime.js'
+import * as THREE from 'three'
+import {
+  applyStoryboardMaterialOverride,
+  CHARACTER_CATALOG,
+  cloneCharacterMaterial
+} from './character-runtime.js'
 import { SUPPORTED_CLIPS } from '../shotdsl/parser.js'
+
+test('character materials preserve original PBR skin and wardrobe appearance', () => {
+  const colorMap = new THREE.Texture()
+  const normalMap = new THREE.Texture()
+  const source = new THREE.MeshStandardMaterial({
+    color: '#b87558',
+    map: colorMap,
+    normalMap,
+    roughness: 0.46,
+    metalness: 0.08
+  })
+
+  const material = cloneCharacterMaterial(source)
+  assert.notEqual(material, source)
+  assert.equal(material.color.getHex(), source.color.getHex())
+  assert.equal(material.map, colorMap)
+  assert.equal(material.normalMap, normalMap)
+  assert.equal(material.roughness, 0.46)
+  assert.equal(material.metalness, 0.08)
+
+  const model = new THREE.Group()
+  model.add(new THREE.Mesh(new THREE.BoxGeometry(), material))
+  applyStoryboardMaterialOverride(model)
+  assert.equal(material.color.getHexString(), 'e8e8e3')
+  assert.equal(material.map, null)
+  assert.equal(material.normalMap, null)
+  assert.equal(material.roughness, 1)
+  assert.equal(material.metalness, 0)
+
+  source.dispose()
+  material.dispose()
+  colorMap.dispose()
+  normalMap.dispose()
+  model.children[0].geometry.dispose()
+})
 
 test('storyboard proxy maps every supported semantic action', () => {
   const character = CHARACTER_CATALOG['storyboard-mannequin']

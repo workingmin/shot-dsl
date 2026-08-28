@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>Shot DSL · 写实人物</title>
+    <link rel="stylesheet" href="/character-image.css" />
+  </head>
+  <body>
+    <main class="character-shell">
+      <header class="character-header">
+        <a class="brand" href="/storyboard/" aria-label="Shot DSL 动态分镜">
+          <span class="brand-mark">S</span>
+          <span><strong>Shot DSL</strong><small>人物形象</small></span>
+        </a>
+        <nav class="module-nav" aria-label="产品模块">
+          <a href="/storyboard/">动态分镜</a>
+          <span aria-current="page">人物形象</span>
+        </nav>
+      </header>
+
+      <section class="character-workspace">
+        <aside class="control-panel">
+          <div class="control-heading">
+            <div>
+              <span class="section-index">01</span>
+              <h1>写实人物生成</h1>
+            </div>
+            <button id="reset-model" class="icon-button" type="button" title="恢复示例人物" aria-label="恢复示例人物">
+              <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <form id="generation-form">
+            <label for="character-prompt">人物描述</label>
+            <textarea id="character-prompt" maxlength="360" spellcheck="true"></textarea>
+            <div class="prompt-meta">
+              <span id="prompt-count">0 / 360</span>
+              <span id="provider-status" data-state="loading">检测生成服务</span>
+            </div>
+            <button id="generate-button" class="primary-button" type="submit" disabled>
+              <i data-lucide="sparkles" aria-hidden="true"></i>
+              <span>生成人物</span>
+            </button>
+          </form>
+
+          <section id="job-panel" class="job-panel" aria-live="polite" hidden>
+            <div class="job-label"><span id="job-stage">等待生成</span><span id="job-progress">0%</span></div>
+            <progress id="generation-progress" max="100" value="0"></progress>
+          </section>
+
+          <div id="error-message" class="error-message" role="alert" hidden></div>
+
+          <dl class="model-details">
+            <div><dt>模型</dt><dd id="model-name">—</dd></div>
+            <div><dt>来源</dt><dd id="model-source">—</dd></div>
+            <div><dt>几何</dt><dd id="model-geometry">—</dd></div>
+            <div><dt>材质</dt><dd id="model-materials">—</dd></div>
+          </dl>
+        </aside>
+
+        <section class="viewer-panel" aria-label="3D 人物视图">
+          <div class="viewer-toolbar">
+            <div><span class="section-index">02</span><h2>人物视图</h2></div>
+            <div class="view-control" role="group" aria-label="人物观察角度">
+              <button type="button" data-view="free" aria-pressed="true">自由</button>
+              <button type="button" data-view="front" aria-pressed="false">正面</button>
+              <button type="button" data-view="left" aria-pressed="false">侧面</button>
+              <button type="button" data-view="back" aria-pressed="false">背面</button>
+            </div>
+          </div>
+
+          <div id="character-stage" class="character-stage">
+            <canvas id="character-canvas" aria-label="写实 3D 人物"></canvas>
+            <div id="viewer-loading" class="viewer-loading">
+              <span class="spinner" aria-hidden="true"></span>
+              <span id="viewer-loading-text">正在加载人物</span>
+            </div>
+            <div class="stage-caption"><span id="active-view-label">FREE VIEW</span><span id="asset-state">SAMPLE ASSET</span></div>
+          </div>
+
+          <footer class="viewer-footer">
+            <div id="render-status" class="render-status" data-state="loading">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="render-status-text">正在初始化</span>
+            </div>
+            <button id="export-turnaround" class="export-button" type="button" disabled>
+              <i data-lucide="download" aria-hidden="true"></i>
+              <span>导出三视图</span>
+            </button>
+          </footer>
+        </section>
+      </section>
+    </main>
+
+    <script src="/assets/character-image.js" defer></script>
+  </body>
+</html>

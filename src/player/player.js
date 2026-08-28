@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js'
 import { evaluateTimeline } from '../timeline.js'
-import { CharacterAssetManager } from './character-runtime.js'
+import { applyStoryboardMaterialOverride, CharacterAssetManager } from './character-runtime.js'
 import { applyProceduralClip, createHumanoid } from './humanoid.js'
 
 const clone = value => structuredClone(value)
@@ -150,6 +150,7 @@ export class ShotPlayer {
   async createActor(entity) {
     try {
       const character = await this.characterAssets.instantiate(entity)
+      applyStoryboardMaterialOverride(character.model)
       const root = new THREE.Group()
       root.name = entity.id
       root.add(character.model)

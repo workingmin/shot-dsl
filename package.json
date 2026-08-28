@@ -6,15 +6,17 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "dev": "node scripts/dev.mjs",
-    "start": "node scripts/serve.mjs",
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "start": "node --env-file-if-exists=.env scripts/serve.mjs",
     "assets:audit": "node scripts/audit-character-assets.mjs",
     "test": "node --test",
     "smoke": "node scripts/browser-smoke.mjs",
+    "smoke:character": "node scripts/character-image-smoke.mjs",
     "check": "npm run assets:audit && npm test && npm run build"
   },
   "dependencies": {
     "esbuild": "0.25.8",
+    "lucide": "^1.35.0",
     "three": "0.185.0"
   },
   "engines": {

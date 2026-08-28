@@ -13,13 +13,14 @@ const contentTypes = {
   '.svg': 'image/svg+xml'
 }
 
-export const createStaticServer = ({ root, port = 4173, host = '127.0.0.1' }) => {
+export const createStaticServer = ({ root, port = 4173, host = '127.0.0.1', requestHandler = null }) => {
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, `http://${request.headers.host}`)
     const { pathname } = url
-    if (pathname === '/' || pathname === '/storyboard') {
+    if (requestHandler && await requestHandler(request, response, url)) return
+    if (pathname === '/' || pathname === '/storyboard' || pathname === '/character-image') {
       response.writeHead(302, {
-        Location: `/storyboard/${url.search}`,
+        Location: `${pathname === '/character-image' ? '/character-image/' : '/storyboard/'}${url.search}`,
         'Cache-Control': 'no-store'
       })
       response.end()
