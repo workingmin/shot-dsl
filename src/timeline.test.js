@@ -44,7 +44,7 @@ test('camera cuts and clips resolve identically when seeking out of order', () =
       { timeMs: 0, type: 'cameraCut', cameraId: 'wide' },
       { timeMs: 500, type: 'playClip', actorId: 'a', clip: 'run', loop: true, speed: 1 },
       { timeMs: 1800, type: 'cameraCut', cameraId: 'close' },
-      { timeMs: 2000, type: 'playClip', actorId: 'a', clip: 'punch', loop: false, speed: 1 }
+      { timeMs: 2000, type: 'playClip', actorId: 'a', clip: 'reach', loop: false, speed: 1 }
     ]
   }
   evaluateTimeline(ir, 4000)
@@ -53,7 +53,7 @@ test('camera cuts and clips resolve identically when seeking out of order', () =
   const second = evaluateTimeline(ir, 2400)
   assert.deepEqual(second, first)
   assert.equal(first.activeCameraId, 'close')
-  assert.equal(first.clips.get('a').clip, 'punch')
+  assert.equal(first.clips.get('a').clip, 'reach')
   assert.equal(first.clips.get('a').elapsedMs, 400)
 })
 
@@ -64,11 +64,11 @@ test('clip evaluation exposes the previous action only inside blend window', () 
     tracks: [],
     events: [
       { timeMs: 0, type: 'playClip', actorId: 'hero', clip: 'run', loop: true, speed: 1, blendMs: 0 },
-      { timeMs: 1000, type: 'playClip', actorId: 'hero', clip: 'punch', loop: false, speed: 1, blendMs: 200 }
+      { timeMs: 1000, type: 'playClip', actorId: 'hero', clip: 'reach', loop: false, speed: 1, blendMs: 200 }
     ]
   }
   const blending = evaluateTimeline(ir, 1100).clips.get('hero')
-  assert.equal(blending.clip, 'punch')
+  assert.equal(blending.clip, 'reach')
   assert.equal(blending.elapsedMs, 100)
   assert.equal(blending.previous.clip, 'run')
   assert.equal(blending.previous.elapsedMs, 1100)
@@ -89,4 +89,18 @@ test('gaze constraints activate and expire deterministically at absolute time', 
   assert.equal(active.elapsedMs, 700)
   assert.equal(active.strength, 0.8)
   assert.equal(evaluateTimeline(ir, 3000).gazes.size, 0)
+})
+
+test('storyboard notes activate and expire by absolute time', () => {
+  const ir = {
+    scene: { durationMs: 5000 },
+    entities: {},
+    tracks: [],
+    events: [
+      { timeMs: 1200, type: 'note', text: '镜头缓慢推近', durationMs: 1500 }
+    ]
+  }
+  assert.deepEqual(evaluateTimeline(ir, 1199).notes, [])
+  assert.equal(evaluateTimeline(ir, 2000).notes[0].text, '镜头缓慢推近')
+  assert.deepEqual(evaluateTimeline(ir, 2700).notes, [])
 })

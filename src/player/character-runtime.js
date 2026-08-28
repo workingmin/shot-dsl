@@ -11,14 +11,16 @@ const normalizedClipTime = (clip, elapsedMs, loop) => {
   return loop ? seconds % clip.duration : Math.min(seconds, Math.max(0, clip.duration - 1 / 120))
 }
 
-const tintMaterial = (material, tint, renderStyle) => {
+const storyboardMaterial = material => {
   const result = material.clone()
-  const cinematic = renderStyle === 'cinematic' || renderStyle === 'cinematic-outline'
-  const wireframe = renderStyle === 'wireframe'
-  if (result.color) result.color.lerp(tint, cinematic ? 0.1 : 0.62)
-  if ('roughness' in result) result.roughness = cinematic ? Math.max(0.42, result.roughness ?? 0.72) : 1
-  if ('metalness' in result && !cinematic) result.metalness = 0
-  result.wireframe = wireframe
+  if (result.color) result.color.set('#e8e8e3')
+  if ('roughness' in result) result.roughness = 1
+  if ('metalness' in result) result.metalness = 0
+  result.map = null
+  result.normalMap = null
+  result.roughnessMap = null
+  result.metalnessMap = null
+  result.wireframe = false
   if (!material.side || material.side === THREE.FrontSide) result.side = THREE.FrontSide
   return result
 }
@@ -37,7 +39,7 @@ const measureCharacterBounds = model => {
 }
 
 export class CharacterRuntime {
-  constructor(template, entity, options = {}) {
+  constructor(template) {
     this.config = template.config
     this.model = SkeletonUtils.clone(template.scene)
     this.mixer = new THREE.AnimationMixer(this.model)
@@ -45,8 +47,6 @@ export class CharacterRuntime {
     this.actions = new Map()
     this.morphTargets = []
     this.lastSample = null
-    const tint = new THREE.Color(entity.color)
-
     this.model.traverse(child => {
       if (child.geometry) child.geometry.userData.assetShared = true
       if (!child.isMesh) return
@@ -54,8 +54,8 @@ export class CharacterRuntime {
       child.castShadow = true
       child.receiveShadow = true
       child.frustumCulled = false
-      if (Array.isArray(child.material)) child.material = child.material.map(material => tintMaterial(material, tint, options.renderStyle))
-      else child.material = tintMaterial(child.material, tint, options.renderStyle)
+      if (Array.isArray(child.material)) child.material = child.material.map(storyboardMaterial)
+      else child.material = storyboardMaterial(child.material)
     })
 
     // Measure the authored mesh envelope before sampling animation. This avoids
@@ -167,8 +167,19 @@ export class CharacterRuntime {
     direction.applyQuaternion(parentWorldRotation).normalize()
     const yaw = Math.atan2(direction.x, Math.max(0.0001, direction.z))
     const pitch = -Math.atan2(direction.y, Math.max(0.0001, Math.hypot(direction.x, direction.z)))
-    head.rotation.y += THREE.MathUtils.clamp(yaw, -0.75, 0.75) * strength
-    head.rotation.x += THREE.MathUtils.clamp(pitch, -0.4, 0.4) * strength
+    const clampedYaw = THREE.MathUtils.clamp(yaw, -0.75, 0.75) * strength
+    const clampedPitch = THREE.MathUtils.clamp(pitch, -0.4, 0.4) * strength
+    head.rotation.y += clampedYaw
+    head.rotation.x += clampedPitch
+    const neck = this.resolveBone('neck')
+    if (neck) {
+      neck.rotation.y += clampedYaw * 0.35
+      neck.rotation.x += clampedPitch * 0.3
+    }
+    const eyeL = this.resolveBone('eye_l')
+    const eyeR = this.resolveBone('eye_r')
+    if (eyeL) eyeL.rotation.y = THREE.MathUtils.clamp(yaw, -0.35, 0.35) * strength
+    if (eyeR) eyeR.rotation.y = THREE.MathUtils.clamp(yaw, -0.35, 0.35) * strength
     head.updateMatrixWorld(true)
     return true
   }
@@ -224,8 +235,8 @@ export class CharacterAssetManager {
     return { scene: gltf.scene, animations: gltf.animations, config }
   }
 
-  async instantiate(entity, options = {}) {
+  async instantiate(entity) {
     const template = await this.load(entity.model)
-    return new CharacterRuntime(template, entity, options)
+    return new CharacterRuntime(template)
   }
 }

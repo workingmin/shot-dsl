@@ -41,6 +41,9 @@ export const evaluateTimeline = (ir, timeMs) => {
   let activeCameraId = Object.values(ir.entities).find(entity => entity.kind === 'camera')?.id ?? null
   const clipEvents = new Map()
   const gazes = new Map()
+  const attachments = new Map()
+  const ikConstraints = new Map()
+  const notes = []
   for (const event of ir.events) {
     if (event.timeMs > clampedTime) break
     if (event.type === 'cameraCut') activeCameraId = event.cameraId
@@ -51,6 +54,19 @@ export const evaluateTimeline = (ir, timeMs) => {
     if (event.type === 'gaze') {
       if (clampedTime < event.timeMs + event.durationMs) gazes.set(event.actorId, { ...event, elapsedMs: clampedTime - event.timeMs })
       else gazes.delete(event.actorId)
+    }
+    if (event.type === 'attach') {
+      if (event.releaseMs && clampedTime >= event.releaseMs) attachments.delete(event.objectId)
+      else attachments.set(event.objectId, { ...event, elapsedMs: clampedTime - event.timeMs })
+    }
+    if (event.type === 'ik') {
+      if (clampedTime < event.timeMs + event.durationMs) ikConstraints.set(event.actorId, { ...event, elapsedMs: clampedTime - event.timeMs })
+      else ikConstraints.delete(event.actorId)
+    }
+    if (event.type === 'note') {
+      if (clampedTime < event.timeMs + event.durationMs) {
+        notes.push({ ...event, elapsedMs: clampedTime - event.timeMs })
+      }
     }
   }
   const clips = new Map()
@@ -67,5 +83,5 @@ export const evaluateTimeline = (ir, timeMs) => {
     }
     clips.set(actorId, current)
   }
-  return { timeMs: clampedTime, values, activeCameraId, clips, gazes }
+  return { timeMs: clampedTime, values, activeCameraId, clips, gazes, attachments, ikConstraints, notes }
 }

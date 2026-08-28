@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ASSET_ENHANCEMENT_TARGETS, CHARACTER_CATALOG } from '../src/shotdsl/catalog.js'
+import { CHARACTER_CATALOG } from '../src/shotdsl/catalog.js'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const JSON_CHUNK = 0x4e4f534a
@@ -44,7 +44,7 @@ export const auditCharacterAssets = async () => {
       errors.push(`${id}: ${error.message}`)
       continue
     }
-    for (const field of ['source', 'license', 'profile', 'rig', 'speech']) {
+    for (const field of ['source', 'license', 'rig']) {
       if (!model[field]) errors.push(`${id}: catalog metadata '${field}' is required`)
     }
     const actionAssets = Object.entries(model.clips).map(([action, mapping]) => ({
@@ -59,12 +59,10 @@ export const auditCharacterAssets = async () => {
       if (!inspection.nodes.includes(node)) errors.push(`${id}: semantic bone '${semantic}' references missing node '${node}'`)
     }
     if (model.license?.distribution !== 'allowed') warnings.push(`${id}: distribution policy is '${model.license?.distribution ?? 'unspecified'}'`)
-    if ((model.speech?.visemes ?? []).length === 0) warnings.push(`${id}: no verified viseme mapping`)
     assets.push({
       id,
       file: model.url,
       license: model.license,
-      profile: model.profile,
       rig: model.rig,
       animations: inspection.animations.length,
       semanticActions: actionAssets.length,
@@ -72,15 +70,14 @@ export const auditCharacterAssets = async () => {
       morphTargets: inspection.morphTargets
     })
   }
-  const enhancementTargets = Object.entries(ASSET_ENHANCEMENT_TARGETS).map(([id, target]) => ({ id, ...target }))
-  return { ok: errors.length === 0, assets, enhancementTargets, errors, warnings }
+  return { ok: errors.length === 0, assets, errors, warnings }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const report = await auditCharacterAssets()
   if (process.argv.includes('--json')) process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
   else {
-    process.stdout.write(`Character assets: ${report.assets.length} audited · ${report.enhancementTargets.length} enhancement targets · ${report.errors.length} errors · ${report.warnings.length} warnings\n`)
+    process.stdout.write(`Character assets: ${report.assets.length} audited · ${report.errors.length} errors · ${report.warnings.length} warnings\n`)
     for (const asset of report.assets) process.stdout.write(`- ${asset.id}: ${asset.animations} animations · ${asset.semanticActions} semantic actions · ${asset.morphTargets.length} morph targets · ${asset.license.id}\n`)
     for (const warning of report.warnings) process.stdout.write(`warning: ${warning}\n`)
     for (const error of report.errors) process.stderr.write(`error: ${error}\n`)

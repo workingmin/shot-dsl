@@ -5,6 +5,8 @@ import { setTimeout as delay } from 'node:timers/promises'
 const chromePath = process.env.CHROME_PATH ?? '/usr/bin/google-chrome'
 const debugPort = Number(process.env.DEBUG_PORT ?? 9223)
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:4173'
+const windowSize = process.env.WINDOW_SIZE ?? '1500,1050'
+const minimumCanvasWidth = Number(process.env.MIN_CANVAS_WIDTH ?? 500)
 
 const chrome = spawn(chromePath, [
   '--headless=new',
@@ -18,15 +20,14 @@ const chrome = spawn(chromePath, [
   '--ignore-gpu-blocklist',
   '--use-angle=swiftshader',
   `--remote-debugging-port=${debugPort}`,
-  '--window-size=1500,1050',
+  `--window-size=${windowSize}`,
   'about:blank'
 ], { stdio: ['ignore', 'ignore', 'ignore'] })
 
 const waitForPageTarget = async () => {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`)
-      const targets = await response.json()
+      const targets = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()
       const page = targets.find(target => target.type === 'page')
       if (page) return page
     } catch { /* Chrome is starting. */ }
@@ -62,7 +63,9 @@ const run = async () => {
     if (message.method === 'Network.loadingFailed' && message.params.errorText !== 'net::ERR_ABORTED') {
       diagnostics.push(`${message.params.errorText}: ${message.params.type}: ${requestUrls.get(message.params.requestId) ?? 'unknown URL'}`)
     }
-    if (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error') diagnostics.push(message.params.args.map(arg => arg.value ?? arg.description).join(' '))
+    if (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error') {
+      diagnostics.push(message.params.args.map(arg => arg.value ?? arg.description).join(' '))
+    }
   })
 
   const send = (method, params = {}) => new Promise((resolve, reject) => {
@@ -90,6 +93,11 @@ const run = async () => {
     select.value = option.value
     select.dispatchEvent(new Event('change', { bubbles: true }))
   })()`)
+  const seek = milliseconds => evaluate(`(() => {
+    const range = document.querySelector('#timeline')
+    range.value = '${milliseconds}'
+    range.dispatchEvent(new Event('input', { bubbles: true }))
+  })()`)
 
   await Promise.all([send('Runtime.enable'), send('Network.enable'), send('Page.enable')])
   await send('Page.navigate', { url: appUrl })
@@ -100,89 +108,121 @@ const run = async () => {
     canvas: { width: document.querySelector('canvas')?.width, height: document.querySelector('canvas')?.height },
     loadingDisplay: getComputedStyle(document.querySelector('#loading-view')).display,
     diagnostics: document.querySelector('#diagnostic-count')?.textContent,
-    markers: document.querySelectorAll('.event-marker').length
+    examples: document.querySelector('#scene-example')?.options.length,
+    videoExportAvailable: !document.querySelector('#export-video-button')?.disabled
   })`))
-  const initialHumanMetrics = initial.app?.characterMetrics ?? []
-  const normalizedHumans = initialHumanMetrics.every(metric => metric.modelId === 'game-ready-soldier' && metric.proportion === 'human-realistic' && metric.fidelity === 'game-ready' && Math.abs(metric.normalizedHeight - 1.78) < 0.001)
-  const initialAssetActions = (initial.app?.characterSamples ?? []).flatMap(sample => sample.actions.map(action => action.asset))
-  const humanActionsResolved = initialAssetActions.length === 2 && initialAssetActions.every(asset => asset === 'Idle')
-  if (!initial.app?.ready || initial.app.sceneId !== 'forest_tracking_prop_action' || initial.app.beatCount !== 3 || initial.app.workflowSkillCount !== 6 || initial.app.skinnedActors !== 2 || initial.app.humanActors !== 2 || initial.app.gameReadyActors !== 2 || initial.app.renderStyle !== 'cinematic' || initial.app.fallbackActors !== 0 || initial.app.characterModels?.join() !== 'game-ready-soldier' || !normalizedHumans || !humanActionsResolved || initial.canvas.width < 500 || initial.loadingDisplay !== 'none' || initial.markers < 4) {
-    throw new Error(`Initial render assertion failed: ${JSON.stringify(initial)}`)
+  const normalized = initial.app?.characterMetrics.every(metric => (
+    metric.modelId === 'storyboard-mannequin' &&
+    metric.proportion === 'human-neutral' &&
+    metric.fidelity === 'storyboard-proxy' &&
+    Math.abs(metric.normalizedHeight - 1.78) < 0.001
+  ))
+  if (
+    !initial.app?.ready ||
+    initial.app.sceneId !== 'forest_tracking_blocking' ||
+    initial.app.renderStyle !== 'storyboard' ||
+    initial.app.skinnedActors !== 2 ||
+    initial.app.storyboardActors !== 2 ||
+    initial.app.fallbackActors !== 0 ||
+    initial.app.characterModels?.join() !== 'storyboard-mannequin' ||
+    initial.examples !== 4 ||
+    !initial.videoExportAvailable ||
+    !normalized ||
+    initial.canvas.width < minimumCanvasWidth ||
+    initial.loadingDisplay !== 'none'
+  ) {
+    throw new Error(`Initial storyboard render assertion failed: ${JSON.stringify(initial)}`)
   }
-  const initialFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
 
+  const initialFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   await evaluate(`document.querySelector('#play-button').click()`)
-  await delay(750)
+  await delay(500)
   const playbackTime = await evaluate(`window.__SHOT_DSL_APP__.getState().currentTimeMs`)
   if (playbackTime <= 0) throw new Error(`Playback did not advance: ${playbackTime}`)
   const animatedFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
   if (animatedFrame === initialFrame) throw new Error('Canvas pixels did not change during playback')
 
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '5500'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'token_insert'`)
+  await seek(5000)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'marker_insert'`)
   const forestState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (forestState.activeGazes?.sort().join() !== 'partner,scout') throw new Error(`Forest prop-focus assertion failed: ${JSON.stringify(forestState)}`)
+  if (!forestState.activeNotes?.includes('动作停顿，切道具特写') || forestState.activeIKConstraints?.join() !== 'scout') {
+    throw new Error(`Storyboard note/IK assertion failed: ${JSON.stringify(forestState)}`)
+  }
 
   await selectExample('面馆 · 多机位空间连续性')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'noodle_shop_spatial_coverage'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '8000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'noodle_shop_continuity'`)
+  await seek(7300)
   await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'token_insert'`)
   const noodleState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (noodleState.renderStyle !== 'cinematic-outline' || noodleState.beatCount !== 3 || noodleState.workflowSkillCount !== 6 || noodleState.skinnedActors !== 3 || noodleState.fallbackActors !== 0 || noodleState.characterModels?.join() !== 'human-mannequin' || noodleState.activeGazes?.sort().join() !== 'customer,owner') throw new Error(`Spatial coverage assertion failed: ${JSON.stringify(noodleState)}`)
-
-  await selectExample('宫宴 · 试探与反应镜头')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'palace_banquet_reaction_chain'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '7600'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'envoy_ecu'`)
-  const palaceState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (palaceState.skinnedActors !== 3 || palaceState.fallbackActors !== 0 || palaceState.activeGazes?.sort().join() !== 'attendant,envoy,ruler') throw new Error(`Reaction-chain assertion failed: ${JSON.stringify(palaceState)}`)
-
-  await selectExample('密室 · 线索揭示与空间反转')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'chamber_clue_spatial_reveal'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '7500'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'overhead_reveal'`)
-  const chamberState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (chamberState.skinnedActors !== 3 || chamberState.gameReadyActors !== 1 || chamberState.fallbackActors !== 0 || chamberState.activeGazes?.join() !== 'analyst') throw new Error(`Clue-reveal assertion failed: ${JSON.stringify(chamberState)}`)
+  if (noodleState.skinnedActors !== 3 || !noodleState.activeNotes?.[0]?.includes('道具交接特写')) {
+    throw new Error(`Spatial continuity assertion failed: ${JSON.stringify(noodleState)}`)
+  }
 
   await selectExample('四人 · 道具传递与反应链')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'four_actor_prop_reaction_chain'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '10800'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'group_orbit'`)
-  const seekState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  if (seekState.skinnedActors !== 4 || seekState.humanActors !== 4 || seekState.fallbackActors !== 0 || seekState.characterModels?.join() !== 'human-mannequin' || seekState.activeGazes?.sort().join() !== 'ally,healer' || Math.abs(seekState.currentTimeMs - 10800) > 1) throw new Error(`Seek assertion failed: ${JSON.stringify(seekState)}`)
-
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'four_actor_prop_handoff'`)
+  await seek(5000)
+  const handoffState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (handoffState.skinnedActors !== 4 || handoffState.activeAttachments?.join() !== 'envelope') {
+    throw new Error(`Prop handoff assertion failed: ${JSON.stringify(handoffState)}`)
+  }
   const firstSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '100'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '10800'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await seek(100)
+  await seek(5000)
   const repeatedSeekFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  if (repeatedSeekFrame !== firstSeekFrame) throw new Error('Repeated absolute seek produced different character pixels')
+  if (repeatedSeekFrame !== firstSeekFrame) throw new Error('Repeated absolute seek produced different pixels')
+
+  await selectExample('密室 · 线索揭示与空间反转')
+  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'chamber_clue_reveal'`)
+  await seek(7600)
+  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'overhead_reveal'`)
+  const chamberState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
+  if (!chamberState.activeNotes?.[0]?.includes('俯视')) throw new Error(`Reveal note assertion failed: ${JSON.stringify(chamberState)}`)
 
   const pngLength = await evaluate(`document.querySelector('canvas').toDataURL('image/png').length`)
   if (pngLength < 10000) throw new Error(`Frame export surface is unexpectedly small: ${pngLength}`)
 
-  await selectExample('非遗 · 表演与工艺覆盖')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'heritage_mask_performance_coverage'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '8000'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'dance_orbit'`)
-  const heritageState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  const danceSample = heritageState.characterSamples?.find(sample => sample.actorId === 'performer')?.actions.find(action => action.asset === 'Dance_Simple')
-  if (heritageState.skinnedActors !== 2 || heritageState.fallbackActors !== 0 || !danceSample) throw new Error(`Heritage performance assertion failed: ${JSON.stringify(heritageState)}`)
-
-  await selectExample('战场 · 攻防反应链')
-  await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'battlefield_attack_response_chain'`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '2092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  await waitFor(`window.__SHOT_DSL_APP__.getState().camera === 'first_impact'`)
-  const impactState = JSON.parse(await evaluate(`JSON.stringify(window.__SHOT_DSL_APP__.getState())`))
-  const impactFrame = impactState.activeCameraFrame
-  const punchSample = impactState.characterSamples?.find(sample => sample.actorId === 'vanguard')?.actions.find(action => action.asset === 'Punch_Jab')
-  if (impactState.skinnedActors !== 3 || impactState.humanActors !== 3 || impactState.gameReadyActors !== 0 || impactState.fallbackActors !== 0 || impactFrame?.mode !== 'impact' || impactFrame?.boneTargetsResolved !== 2 || impactFrame?.contactDistance > 0.2 || Math.abs((punchSample?.time ?? -1) - 0.292) > 0.002) {
-    throw new Error(`Impact close-up assertion failed: ${JSON.stringify(impactState)}`)
+  let videoExportTested = false
+  if (process.env.TEST_VIDEO_EXPORT) {
+    const videoSource = `shotdsl 0.1
+scene smoke_video {
+  duration 500ms
+  fps 10
+  seed 1
+  style storyboard
+}
+object marker {
+  primitive box
+  size [1m, 1m, 1m]
+  position [0m, 0.5m, 0m]
+}
+camera cam {
+  mode lookAt
+  fov 45deg
+  position [0m, 1.5m, 5m]
+  target object marker
+}
+timeline {
+  cut 0s camera cam
+  note 0s "视频导出测试" duration 500ms
+}`
+    await evaluate(`(() => {
+      const input = document.querySelector('#dsl-input')
+      input.value = ${JSON.stringify(videoSource)}
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })()`)
+    await waitFor(`window.__SHOT_DSL_APP__.getState().sceneId === 'smoke_video'`)
+    await evaluate(`document.querySelector('#export-video-button').click()`)
+    await waitFor(`document.querySelector('#export-video-button').disabled`)
+    await waitFor(`!document.querySelector('#export-video-button').disabled`, 200)
+    videoExportTested = await evaluate(`document.querySelector('#status-text').textContent.includes('WebM 视频已导出')`)
+    if (!videoExportTested) throw new Error('WebM export did not reach its completed state')
   }
-  const firstImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '1000'; range.dispatchEvent(new Event('input', { bubbles: true })); range.value = '2092'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-  const repeatedImpactFrame = await evaluate(`document.querySelector('canvas').toDataURL('image/png')`)
-  if (repeatedImpactFrame !== firstImpactFrame) throw new Error('Repeated impact-camera seek produced different pixels')
 
-  await evaluate(`(() => { const input = document.querySelector('#dsl-input'); input.value = 'shotdsl 0.1\\nscene broken {\\n duration 5\\n}'; input.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await evaluate(`(() => {
+    const input = document.querySelector('#dsl-input')
+    input.value = 'shotdsl 0.1\\nscene broken {\\n duration 5\\n}'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })()`)
   await waitFor(`document.querySelector('#status')?.dataset.state === 'error'`)
   const errorCount = await evaluate(`document.querySelectorAll('.diagnostic').length`)
   if (errorCount < 2) throw new Error(`Expected compiler diagnostics, received ${errorCount}`)
@@ -191,17 +231,14 @@ const run = async () => {
     const screenshotExample = process.env.SCREENSHOT_EXAMPLE ?? '山林 · 追踪与道具动作'
     await selectExample(screenshotExample)
     await waitFor(`document.querySelector('#status')?.dataset.state === 'ready'`)
-    if (process.env.SCREENSHOT_TIME) {
-      const screenshotTime = Number(process.env.SCREENSHOT_TIME)
-      await evaluate(`(() => { const range = document.querySelector('#timeline'); range.value = '${screenshotTime}'; range.dispatchEvent(new Event('input', { bubbles: true })) })()`)
-    }
+    if (process.env.SCREENSHOT_TIME) await seek(Number(process.env.SCREENSHOT_TIME))
+    if (process.env.SCREENSHOT_SCROLL_PREVIEW) await evaluate(`document.querySelector('#preview').scrollIntoView({ block: 'center' })`)
     await delay(200)
     const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
     await writeFile(process.env.SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
   }
 
-  const result = { initial, playbackTime: Math.round(playbackTime), forestState, noodleState, palaceState, chamberState, seekState, heritageState, impactState, pngLength, compilerErrors: errorCount, diagnostics }
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+  process.stdout.write(`${JSON.stringify({ initial, playbackTime: Math.round(playbackTime), forestState, noodleState, handoffState, chamberState, pngLength, videoExportTested, compilerErrors: errorCount, diagnostics }, null, 2)}\n`)
   socket.close()
   if (diagnostics.length) process.exitCode = 1
 }

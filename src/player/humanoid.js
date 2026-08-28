@@ -92,12 +92,9 @@ export const resetPose = rig => {
 
 const clipDuration = {
   idle: 1600,
-  guard: 1200,
   walk: 900,
   run: 620,
-  punch: 720,
-  kick: 900,
-  'hit-face': 780,
+  crouch: 1000,
   fall: 1100,
   talk: 1200,
   reach: 900,
@@ -118,12 +115,6 @@ export const applyProceduralClip = (rig, clipState) => {
 
   if (clipState.clip === 'idle') {
     rig.bodyRoot.position.y = Math.sin(phase * Math.PI * 2) * 0.012
-  } else if (clipState.clip === 'guard') {
-    rig.leftArm.shoulder.rotation.set(-0.8, 0, -0.35)
-    rig.rightArm.shoulder.rotation.set(-0.95, 0, 0.35)
-    rig.leftArm.elbow.rotation.x = -1.45
-    rig.rightArm.elbow.rotation.x = -1.45
-    rig.bodyRoot.position.y = Math.abs(wave) * 0.018
   } else if (clipState.clip === 'walk' || clipState.clip === 'run') {
     const strength = clipState.clip === 'run' ? 0.9 : 0.55
     rig.leftLeg.hip.rotation.x = wave * strength
@@ -133,26 +124,12 @@ export const applyProceduralClip = (rig, clipState) => {
     rig.leftArm.shoulder.rotation.x = -wave * strength * 0.8
     rig.rightArm.shoulder.rotation.x = wave * strength * 0.8
     rig.bodyRoot.position.y = Math.abs(wave) * (clipState.clip === 'run' ? 0.055 : 0.025)
-  } else if (clipState.clip === 'punch') {
-    const strike = Math.sin(Math.min(1, phase) * Math.PI)
-    rig.rightArm.shoulder.rotation.set(-1.55 * strike, 0.15, 0.18)
-    rig.rightArm.elbow.rotation.x = -1.15 * (1 - strike)
-    rig.leftArm.shoulder.rotation.x = -0.65
-    rig.leftArm.elbow.rotation.x = -1.25
-    rig.bodyRoot.rotation.y = -0.28 * strike
-  } else if (clipState.clip === 'kick') {
-    const strike = Math.sin(Math.min(1, phase) * Math.PI)
-    rig.rightLeg.hip.rotation.x = -1.65 * strike
-    rig.rightLeg.knee.rotation.x = 0.75 * Math.sin(Math.min(1, phase * 1.5) * Math.PI)
-    rig.leftArm.shoulder.rotation.x = -0.6 * strike
-    rig.rightArm.shoulder.rotation.x = 0.5 * strike
-    rig.bodyRoot.rotation.z = -0.12 * strike
-  } else if (clipState.clip === 'hit-face') {
-    const hit = Math.sin(Math.min(1, phase) * Math.PI)
-    rig.bodyRoot.rotation.z = -0.2 * hit
-    rig.bodyRoot.rotation.y = 0.28 * hit
-    rig.headPivot.rotation.z = -0.48 * hit
-    rig.rightArm.shoulder.rotation.x = 0.5 * hit
+  } else if (clipState.clip === 'crouch') {
+    rig.bodyRoot.position.y = -0.42
+    rig.leftLeg.hip.rotation.x = -0.65
+    rig.rightLeg.hip.rotation.x = -0.65
+    rig.leftLeg.knee.rotation.x = 1.15
+    rig.rightLeg.knee.rotation.x = 1.15
   } else if (clipState.clip === 'fall') {
     const fall = phase * phase
     rig.bodyRoot.rotation.z = -Math.PI * 0.48 * fall

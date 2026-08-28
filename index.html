@@ -11,9 +11,9 @@
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">GAME-READY HUMAN · MOCAP · CINEMATIC CAMERA</p>
+          <p class="eyebrow">BLACK &amp; WHITE · 3D BLOCKING · SHOT TIMING</p>
           <h1>Shot DSL</h1>
-          <p class="product-goal">文本驱动的拟真人物 3D 动态分镜</p>
+          <p class="product-goal">把静态纸质分镜升级为可回放的黑白线条 3D 动态分镜</p>
         </div>
         <div class="topbar-controls">
           <label class="scene-selector" for="scene-example">
@@ -61,6 +61,7 @@
             <canvas id="scene-canvas" aria-label="3D 分镜画面"></canvas>
             <div class="frame-guides" aria-hidden="true"></div>
             <div id="shot-label" class="shot-label">CAM —</div>
+            <div id="shot-note" class="shot-note" hidden></div>
             <div id="loading-view" class="loading-view">
               <div class="loader" aria-hidden="true"></div>
               <p>正在准备场景</p>
@@ -74,6 +75,7 @@
             <input id="timeline" type="range" min="0" max="6000" step="1" value="0" aria-label="时间轴" />
             <span id="duration" class="timecode">00:06.000</span>
             <button id="export-button" class="export-button" type="button">导出帧</button>
+            <button id="export-video-button" class="export-button" type="button">导出视频</button>
           </div>
 
           <div class="event-track-wrap">
@@ -89,7 +91,7 @@
       </section>
 
       <footer class="footer-note">
-        ShotDSL v0.1 · beat-aware professional workflow · deterministic 3D previs
+        ShotDSL v0.1 · deterministic black-and-white 3D storyboard previs
       </footer>
     </main>
 

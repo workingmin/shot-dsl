@@ -20,11 +20,6 @@ import {
   resolveModel,
   resolveStyle
 } from './catalog.js'
-import {
-  PROFESSIONAL_SKILL_SCHEMA_VERSION,
-  resolveProfessionalSkill,
-  skillContractForDispatch
-} from './skills.js'
 
 const SUPPORTED_VERSION = '0.1'
 export const SUPPORTED_CLIPS = SUPPORTED_ACTIONS
@@ -72,7 +67,7 @@ const splitBlocks = (source, diagnostics) => {
     }
 
     if (!active) {
-      const opening = text.match(/^(scene|actor|object|light|camera|beat|workflow)(?:\s+([A-Za-z_][\w-]*))\s*\{$|^(timeline)\s*\{$/)
+      const opening = text.match(/^(scene|actor|object|light|camera|beat)(?:\s+([A-Za-z_][\w-]*))\s*\{$|^(timeline)\s*\{$/)
       if (!opening) {
         diagnostics.push(diagnostic('E_SYNTAX', `Expected a block opening, received '${text}'`, lineNumber))
         continue
@@ -163,7 +158,7 @@ const parseScene = (block, diagnostics) => {
   }
   if (durationMs <= 0) diagnostics.push(diagnostic('E_DURATION', 'Scene duration must be greater than zero', block.line))
   if (!Number.isInteger(fps) || fps <= 0 || fps > 120) diagnostics.push(diagnostic('E_FPS', 'Scene fps must be an integer between 1 and 120', block.line))
-  const requestedStyle = fields.style ?? 'cinematic'
+  const requestedStyle = fields.style ?? 'storyboard'
   const resolvedStyle = resolveStyle(requestedStyle)
   const styleLine = block.lines.find(line => line.text.startsWith('style '))?.line ?? block.line
   if (!resolvedStyle) diagnostics.push(diagnostic('E_STYLE', `Unsupported render style '${requestedStyle}'`, styleLine))
@@ -217,8 +212,8 @@ const parseBeat = (block, scene, entities, diagnostics) => {
 
 const parseEntity = (block, diagnostics) => {
   if (block.kind === 'actor') {
-    const fields = readFields(block, { ...baseDefinitions, model: parseString, color: raw => raw.trim() }, diagnostics)
-    const requestedModel = fields.model ?? 'human-mannequin'
+    const fields = readFields(block, { ...baseDefinitions, model: parseString }, diagnostics)
+    const requestedModel = fields.model ?? 'storyboard-mannequin'
     const resolvedModel = resolveModel(requestedModel)
     const modelLine = block.lines.find(line => line.text.startsWith('model '))?.line ?? block.line
     if (!resolvedModel) diagnostics.push(diagnostic('E_UNKNOWN_MODEL', `Unknown character model '${requestedModel}'`, modelLine))
@@ -231,7 +226,6 @@ const parseEntity = (block, diagnostics) => {
       kind: 'actor',
       model: resolvedModel?.id ?? requestedModel,
       ...(resolvedModel?.alias ? { requestedModel } : {}),
-      color: fields.color ?? '#d8d4ca',
       transform: transformFrom(fields)
     }
   }
@@ -239,26 +233,25 @@ const parseEntity = (block, diagnostics) => {
     const fields = readFields(block, {
       ...baseDefinitions,
       primitive: parseIdentifier,
-      model: parseString,
       size: parseLengthVector,
       radius: parseLength,
-      height: parseLength,
-      color: raw => raw.trim()
+      height: parseLength
     }, diagnostics)
-    if (fields.model && fields.primitive) diagnostics.push(diagnostic('E_OBJECT_SOURCE', `Object '${block.id}' cannot declare both model and primitive`, block.line))
     const primitive = fields.primitive ?? 'box'
+    const size = fields.size ?? [1, 1, 1]
+    const radius = fields.radius ?? 0.5
+    const height = fields.height ?? 1
     if (!['box', 'sphere', 'cylinder', 'cone'].includes(primitive)) diagnostics.push(diagnostic('E_PRIMITIVE', `Unsupported primitive '${primitive}'`, block.line))
-    return { id: block.id, kind: 'object', primitive, model: fields.model, size: fields.size ?? [1, 1, 1], radius: fields.radius ?? 0.5, height: fields.height ?? 1, color: fields.color ?? '#d6d2c8', transform: transformFrom(fields) }
+    return { id: block.id, kind: 'object', primitive, size, radius, height, transform: transformFrom(fields) }
   }
   if (block.kind === 'light') {
     const fields = readFields(block, {
       type: parseIdentifier,
       intensity: parseNumber,
-      color: raw => raw.trim(),
       position: parseLengthVector,
       target: parseTarget
     }, diagnostics)
-    return { id: block.id, kind: 'light', type: fields.type ?? 'directional', intensity: fields.intensity ?? 2, color: fields.color ?? '#ffffff', position: fields.position ?? [3, 6, 4], target: fields.target ?? { kind: 'point', point: [0, 0, 0] } }
+    return { id: block.id, kind: 'light', type: fields.type ?? 'directional', intensity: fields.intensity ?? 2, position: fields.position ?? [3, 6, 4], target: fields.target ?? { kind: 'point', point: [0, 0, 0] } }
   }
   if (block.kind === 'camera') {
     const fields = readFields(block, {
@@ -266,26 +259,16 @@ const parseEntity = (block, diagnostics) => {
       mode: parseIdentifier,
       fov: parseAngle,
       target: parseTarget,
-      attacker: parseTarget,
-      victim: parseTarget,
       offset: parseLengthVector,
       radius: parseLength,
-      distance: parseLength,
       azimuth: parseAngle,
       elevation: parseAngle,
-      side: parseIdentifier,
-      focus: parseNumber,
       shake: parseLength,
       roll: parseAngle
     }, diagnostics)
     const mode = fields.mode ?? 'lookAt'
-    if (!['fixed', 'lookAt', 'follow', 'orbit', 'impact'].includes(mode)) diagnostics.push(diagnostic('E_CAMERA_MODE', `Unsupported camera mode '${mode}'`, block.line))
+    if (!['fixed', 'lookAt', 'follow', 'orbit'].includes(mode)) diagnostics.push(diagnostic('E_CAMERA_MODE', `Unsupported camera mode '${mode}'`, block.line))
     if (['lookAt', 'follow', 'orbit'].includes(mode) && !fields.target) diagnostics.push(diagnostic('E_CAMERA_TARGET', `Camera '${block.id}' mode ${mode} requires target`, block.line))
-    if (mode === 'impact' && (!fields.attacker || !fields.victim)) diagnostics.push(diagnostic('E_CAMERA_IMPACT_TARGETS', `Camera '${block.id}' mode impact requires attacker and victim`, block.line))
-    if (mode === 'impact' && [fields.attacker, fields.victim].some(target => target && (target.entityKind !== 'actor' || !target.bone))) diagnostics.push(diagnostic('E_CAMERA_IMPACT_BONE', `Camera '${block.id}' impact targets must be actor bones`, block.line))
-    if (fields.side && !['left', 'right'].includes(fields.side)) diagnostics.push(diagnostic('E_CAMERA_SIDE', `Camera '${block.id}' side must be left or right`, block.line))
-    if (fields.distance !== undefined && fields.distance <= 0) diagnostics.push(diagnostic('E_CAMERA_DISTANCE', `Camera '${block.id}' distance must be greater than zero`, block.line))
-    if (fields.focus !== undefined && (fields.focus < 0 || fields.focus > 1)) diagnostics.push(diagnostic('E_CAMERA_FOCUS', `Camera '${block.id}' focus must be between 0 and 1`, block.line))
     if (fields.shake !== undefined && fields.shake < 0) diagnostics.push(diagnostic('E_CAMERA_SHAKE', `Camera '${block.id}' shake cannot be negative`, block.line))
     return {
       id: block.id,
@@ -293,15 +276,10 @@ const parseEntity = (block, diagnostics) => {
       mode,
       fov: fields.fov ?? 45 * Math.PI / 180,
       target: fields.target ?? null,
-      attacker: fields.attacker ?? null,
-      victim: fields.victim ?? null,
-      offset: fields.offset ?? (mode === 'impact' ? [0, 0, 0] : [0, 1.5, 5]),
+      offset: fields.offset ?? [0, 1.5, 5],
       radius: fields.radius ?? 5,
-      distance: fields.distance ?? 1.6,
       azimuth: fields.azimuth ?? 0,
       elevation: fields.elevation ?? 15 * Math.PI / 180,
-      side: fields.side ?? 'right',
-      focus: fields.focus ?? 0.68,
       shake: fields.shake ?? 0,
       roll: fields.roll ?? 0,
       transform: transformFrom(fields)
@@ -444,6 +422,92 @@ const parseGaze = (entry, scene, entities, events, diagnostics) => {
   }
 }
 
+const parseAttach = (entry, scene, entities, events, diagnostics) => {
+  const tokens = tokenizeArguments(entry.text)
+  if (tokens.length < 9 || tokens[0] !== 'attach' || tokens[2] !== 'object' || tokens[4] !== 'to' || tokens[5] !== 'actor' || tokens[7] !== 'bone') {
+    diagnostics.push(diagnostic('E_ATTACH_SYNTAX', 'Invalid attach syntax', entry.line))
+    return
+  }
+  try {
+    const timeMs = parseTime(tokens[1], scene.fps)
+    const objectId = parseIdentifier(tokens[3])
+    const actorId = parseIdentifier(tokens[6])
+    if (entities[objectId]?.kind !== 'object') {
+      diagnostics.push(diagnostic('E_UNKNOWN_OBJECT', `Attach targets unknown object '${objectId}'`, entry.line))
+      return
+    }
+    if (entities[actorId]?.kind !== 'actor') {
+      diagnostics.push(diagnostic('E_UNKNOWN_ACTOR', `Attach targets unknown actor '${actorId}'`, entry.line))
+      return
+    }
+    const bone = parseString(tokens[8])
+    const offsetIndex = tokens.indexOf('offset', 9)
+    const releaseIndex = tokens.indexOf('release', 9)
+    let offset = [0, 0, 0]
+    if (offsetIndex >= 0) {
+      const offsetEnd = releaseIndex > offsetIndex ? releaseIndex : tokens.length
+      offset = parseLengthVector(tokens.slice(offsetIndex + 1, offsetEnd).join(' '))
+    }
+    let releaseMs = null
+    if (releaseIndex >= 0) {
+      releaseMs = parseTime(tokens[releaseIndex + 1], scene.fps)
+    }
+    events.push({ timeMs, type: 'attach', objectId, actorId, bone, offset, ...(releaseMs !== null ? { releaseMs: timeMs + releaseMs } : {}), line: entry.line })
+  } catch (error) {
+    diagnostics.push(diagnostic(error.code ?? 'E_ATTACH', error.message, entry.line))
+  }
+}
+
+const parseNote = (entry, scene, events, diagnostics) => {
+  const tokens = tokenizeArguments(entry.text)
+  if (tokens[0] !== 'note' || (tokens.length !== 3 && !(tokens.length === 5 && tokens[3] === 'duration'))) {
+    diagnostics.push(diagnostic('E_NOTE_SYNTAX', 'Invalid note syntax', entry.line))
+    return
+  }
+  try {
+    const timeMs = parseTime(tokens[1], scene.fps)
+    const text = parseString(tokens[2])
+    const durationIndex = tokens.indexOf('duration', 3)
+    const durationMs = durationIndex >= 0 ? parseTime(tokens[durationIndex + 1] ?? '', scene.fps) : 1500
+    if (durationMs <= 0) diagnostics.push(diagnostic('E_NOTE_DURATION', 'Note duration must be greater than zero', entry.line))
+    events.push({ timeMs, type: 'note', text, durationMs, line: entry.line })
+  } catch (error) {
+    diagnostics.push(diagnostic(error.code ?? 'E_NOTE', error.message, entry.line))
+  }
+}
+
+const parseIK = (entry, scene, entities, events, diagnostics) => {
+  const tokens = tokenizeArguments(entry.text)
+  if (tokens.length < 8 || tokens[0] !== 'ik' || tokens[2] !== 'actor' || tokens[4] !== 'effector' || tokens[6] !== 'target') {
+    diagnostics.push(diagnostic('E_IK_SYNTAX', 'Invalid ik syntax', entry.line))
+    return
+  }
+  try {
+    const timeMs = parseTime(tokens[1], scene.fps)
+    const actorId = parseIdentifier(tokens[3])
+    if (entities[actorId]?.kind !== 'actor') {
+      diagnostics.push(diagnostic('E_UNKNOWN_ACTOR', `IK targets unknown actor '${actorId}'`, entry.line))
+      return
+    }
+    const effector = parseString(tokens[5])
+    const durationIndex = tokens.indexOf('duration', 7)
+    const weightIndex = tokens.indexOf('weight', 7)
+    const optionIndexes = [durationIndex, weightIndex].filter(i => i >= 0)
+    const targetEnd = optionIndexes.length ? Math.min(...optionIndexes) : tokens.length
+    const target = parseTarget(tokens.slice(7, targetEnd).join(' '))
+    if (target.kind === 'entity') {
+      const targetEntity = entities[target.entityId]
+      if (!targetEntity) diagnostics.push(diagnostic('E_UNKNOWN_TARGET', `IK targets unknown entity '${target.entityId}'`, entry.line))
+    }
+    const durationMs = durationIndex >= 0 ? parseTime(tokens[durationIndex + 1], scene.fps) : 500
+    const weight = weightIndex >= 0 ? parseNumber(tokens[weightIndex + 1]) : 0.8
+    if (weight < 0 || weight > 1) diagnostics.push(diagnostic('E_IK_WEIGHT', 'IK weight must be between 0 and 1', entry.line))
+    events.push({ timeMs, type: 'ik', actorId, effector, target, durationMs, weight, line: entry.line })
+  } catch (error) {
+    diagnostics.push(diagnostic(error.code ?? 'E_IK', error.message, entry.line))
+  }
+}
+
 const compileTimeline = (blocks, scene, entities, diagnostics) => {
   const tracks = new Map()
   const events = []
@@ -453,6 +517,9 @@ const compileTimeline = (blocks, scene, entities, diagnostics) => {
       else if (entry.text.startsWith('cut ')) parseCut(entry, scene, entities, events, diagnostics)
       else if (entry.text.startsWith('play ')) parsePlay(entry, scene, entities, events, diagnostics)
       else if (entry.text.startsWith('gaze ')) parseGaze(entry, scene, entities, events, diagnostics)
+      else if (entry.text.startsWith('attach ')) parseAttach(entry, scene, entities, events, diagnostics)
+      else if (entry.text.startsWith('ik ')) parseIK(entry, scene, entities, events, diagnostics)
+      else if (entry.text.startsWith('note ')) parseNote(entry, scene, events, diagnostics)
       else diagnostics.push(diagnostic('E_TIMELINE_STATEMENT', `Unknown timeline statement '${entry.text.split(' ')[0]}'`, entry.line))
     }
   }
@@ -473,7 +540,7 @@ const compileTimeline = (blocks, scene, entities, diagnostics) => {
 
 const validateReferences = (entities, diagnostics) => {
   for (const entity of Object.values(entities)) {
-    for (const target of [entity.target, entity.attacker, entity.victim]) {
+    for (const target of [entity.target]) {
       if (target?.kind === 'entity' && !entities[target.entityId]) {
         diagnostics.push(diagnostic('E_UNKNOWN_TARGET', `${entity.kind} '${entity.id}' targets unknown entity '${target.entityId}'`, 1))
       } else if (target?.kind === 'entity' && entities[target.entityId].kind !== target.entityKind) {
@@ -483,111 +550,12 @@ const validateReferences = (entities, diagnostics) => {
   }
 }
 
-const parseWorkflowScope = (raw, beats, entities, line, diagnostics) => {
-  if (raw === 'scene' || raw === 'timeline') return { kind: raw }
-  const match = raw.match(/^(beat|actor|object|camera):([A-Za-z_][\w-]*)$/)
-  if (!match) {
-    diagnostics.push(diagnostic('E_WORKFLOW_SCOPE', `Invalid workflow scope '${raw}'`, line))
-    return { kind: 'invalid', id: raw }
-  }
-  const [, kind, id] = match
-  if (kind === 'beat' && !beats[id]) diagnostics.push(diagnostic('E_UNKNOWN_BEAT', `Workflow targets unknown beat '${id}'`, line))
-  if (kind !== 'beat' && entities[id]?.kind !== kind) diagnostics.push(diagnostic('E_WORKFLOW_SCOPE', `Workflow targets unknown ${kind} '${id}'`, line))
-  return { kind, id }
-}
-
-const workflowHasCycle = dispatches => {
-  const dependencies = new Map(dispatches.map(item => [item.id, item.after]))
-  const visiting = new Set()
-  const visited = new Set()
-  const visit = id => {
-    if (visiting.has(id)) return true
-    if (visited.has(id)) return false
-    visiting.add(id)
-    for (const dependency of dependencies.get(id) ?? []) {
-      if (dependencies.has(dependency) && visit(dependency)) return true
-    }
-    visiting.delete(id)
-    visited.add(id)
-    return false
-  }
-  return dispatches.some(item => visit(item.id))
-}
-
-const compileWorkflow = (blocks, beats, entities, diagnostics) => {
-  if (!blocks.length) return null
-  if (blocks.length > 1) diagnostics.push(diagnostic('E_WORKFLOW_COUNT', `Expected at most one workflow block, found ${blocks.length}`, blocks[1].line))
-  const block = blocks[0]
-  let approval = 'manual'
-  let failure = 'stop'
-  let approvalSeen = false
-  let failureSeen = false
-  const dispatches = []
-  const dispatchIds = new Set()
-
-  for (const entry of block.lines) {
-    if (entry.text.startsWith('approval ')) {
-      if (approvalSeen) diagnostics.push(diagnostic('E_DUPLICATE_FIELD', "Field 'approval' is declared more than once", entry.line))
-      approvalSeen = true
-      approval = entry.text.slice('approval '.length).trim()
-      if (!['manual', 'auto'].includes(approval)) diagnostics.push(diagnostic('E_WORKFLOW_APPROVAL', 'Workflow approval must be manual or auto', entry.line))
-      continue
-    }
-    if (entry.text.startsWith('failure ')) {
-      if (failureSeen) diagnostics.push(diagnostic('E_DUPLICATE_FIELD', "Field 'failure' is declared more than once", entry.line))
-      failureSeen = true
-      failure = entry.text.slice('failure '.length).trim()
-      if (!['stop', 'continue'].includes(failure)) diagnostics.push(diagnostic('E_WORKFLOW_FAILURE', 'Workflow failure must be stop or continue', entry.line))
-      continue
-    }
-
-    const match = entry.text.match(/^dispatch\s+([A-Za-z_][\w.-]*)\s+as\s+([A-Za-z_][\w-]*)\s+scope\s+(\S+)\s+mode\s+(review|propose)(?:\s+after\s+([A-Za-z_][\w-]*(?:\s*,\s*[A-Za-z_][\w-]*)*))?$/)
-    if (!match) {
-      diagnostics.push(diagnostic('E_DISPATCH_SYNTAX', `Invalid workflow statement '${entry.text}'`, entry.line))
-      continue
-    }
-    const [, skillId, id, rawScope, mode, rawAfter = ''] = match
-    const after = rawAfter ? rawAfter.split(',').map(value => value.trim()) : []
-    const scope = parseWorkflowScope(rawScope, beats, entities, entry.line, diagnostics)
-    const skill = resolveProfessionalSkill(skillId)
-    if (!skill) diagnostics.push(diagnostic('E_UNKNOWN_SKILL', `Unknown professional skill '${skillId}'`, entry.line))
-    else {
-      if (!skill.modes.includes(mode)) diagnostics.push(diagnostic('E_SKILL_MODE', `Skill '${skillId}' does not support mode '${mode}'`, entry.line))
-      if (!skill.scopes.includes(scope.kind)) diagnostics.push(diagnostic('E_SKILL_SCOPE', `Skill '${skillId}' does not support scope '${scope.kind}'`, entry.line))
-    }
-    if (dispatchIds.has(id)) diagnostics.push(diagnostic('E_DUPLICATE_DISPATCH', `Dispatch '${id}' is declared more than once`, entry.line))
-    dispatchIds.add(id)
-    dispatches.push({ id, skillId, skill, mode, scope, after, line: entry.line })
-  }
-
-  for (const dispatch of dispatches) {
-    for (const dependency of dispatch.after) {
-      if (dependency === dispatch.id) diagnostics.push(diagnostic('E_WORKFLOW_CYCLE', `Dispatch '${dispatch.id}' cannot depend on itself`, dispatch.line))
-      else if (!dispatchIds.has(dependency)) diagnostics.push(diagnostic('E_UNKNOWN_DISPATCH', `Dispatch '${dispatch.id}' depends on unknown dispatch '${dependency}'`, dispatch.line))
-    }
-  }
-  if (workflowHasCycle(dispatches)) diagnostics.push(diagnostic('E_WORKFLOW_CYCLE', `Workflow '${block.id}' contains a dependency cycle`, block.line))
-  if (approval === 'auto' && dispatches.some(item => item.mode === 'propose')) {
-    diagnostics.push(diagnostic('E_WORKFLOW_APPROVAL', 'Proposal skills require manual approval before their ShotDSL patches can be applied', block.line))
-  }
-
-  return {
-    schemaVersion: PROFESSIONAL_SKILL_SCHEMA_VERSION,
-    id: block.id,
-    approval,
-    failure,
-    dispatches: dispatches
-      .filter(item => item.skill)
-      .map(item => skillContractForDispatch(item.skill, item))
-  }
-}
-
 export const compileShotDSL = source => {
   const diagnostics = []
   const { version, blocks } = splitBlocks(source, diagnostics)
   const sceneBlocks = blocks.filter(block => block.kind === 'scene')
   if (sceneBlocks.length !== 1) diagnostics.push(diagnostic('E_SCENE_COUNT', `Expected exactly one scene block, found ${sceneBlocks.length}`, 1))
-  const scene = sceneBlocks[0] ? parseScene(sceneBlocks[0], diagnostics) : { id: 'invalid', durationMs: 6000, fps: 24, seed: 1, style: 'rough-ink' }
+  const scene = sceneBlocks[0] ? parseScene(sceneBlocks[0], diagnostics) : { id: 'invalid', durationMs: 6000, fps: 24, seed: 1, style: 'storyboard' }
 
   const entities = {}
   for (const block of blocks.filter(item => ['actor', 'object', 'light', 'camera'].includes(item.kind))) {
@@ -601,10 +569,9 @@ export const compileShotDSL = source => {
     beats[block.id] = parseBeat(block, scene, entities, diagnostics)
   }
   const { tracks, events } = compileTimeline(blocks.filter(block => block.kind === 'timeline'), scene, entities, diagnostics)
-  const workflow = compileWorkflow(blocks.filter(block => block.kind === 'workflow'), beats, entities, diagnostics)
   if (!Object.values(entities).some(entity => entity.kind === 'camera')) diagnostics.push(diagnostic('E_CAMERA_REQUIRED', 'At least one camera is required', 1))
   if (!events.some(event => event.type === 'cameraCut')) diagnostics.push(diagnostic('E_INITIAL_CUT', 'Timeline requires at least one camera cut', 1))
 
-  const ir = { version, scene, entities, beats, tracks, events, workflow }
+  const ir = { version, scene, entities, beats, tracks, events }
   return { ok: diagnostics.every(item => item.severity !== 'error'), diagnostics, ir }
 }

@@ -19,9 +19,11 @@ const elements = {
   currentTime: document.querySelector('#current-time'),
   duration: document.querySelector('#duration'),
   export: document.querySelector('#export-button'),
+  exportVideo: document.querySelector('#export-video-button'),
   eventTrack: document.querySelector('#event-track'),
   frameLabel: document.querySelector('#frame-label'),
   shotLabel: document.querySelector('#shot-label'),
+  shotNote: document.querySelector('#shot-note'),
   renderStats: document.querySelector('#render-stats'),
   ir: document.querySelector('#scene-ir'),
   irSummary: document.querySelector('#ir-summary')
@@ -78,8 +80,10 @@ const seek = milliseconds => {
   player.seek(currentTimeMs)
   updateTimeUI()
   const stats = player.getStats()
-  const fidelity = stats.gameReadyActors ? `${stats.gameReadyActors} game-ready · ` : ''
-  elements.renderStats.textContent = `${stats.renderStyle} · ${fidelity}${stats.skinnedActors} rigged · ${stats.triangles.toLocaleString()} tris`
+  const notes = stats.activeNotes ?? []
+  elements.shotNote.textContent = notes.join(' · ')
+  elements.shotNote.hidden = notes.length === 0
+  elements.renderStats.textContent = `${stats.renderStyle} · ${stats.skinnedActors} proxies · ${stats.triangles.toLocaleString()} tris`
 }
 
 function tick(timestamp) {
@@ -124,10 +128,22 @@ const renderEventTrack = ir => {
   elements.eventTrack.replaceChildren()
   for (const event of ir.events) {
     const marker = document.createElement('span')
-    marker.className = `event-marker ${event.type === 'cameraCut' ? 'cut-event' : event.type === 'gaze' ? 'gaze-event' : 'play-event'}`
+    const label = event.type === 'cameraCut' ? `CUT ${event.cameraId}`
+      : event.type === 'gaze' ? `GAZE ${event.actorId}`
+      : event.type === 'attach' ? `ATTACH ${event.objectId}→${event.actorId}`
+      : event.type === 'ik' ? `IK ${event.actorId}:${event.effector}`
+      : event.type === 'note' ? `NOTE ${event.text}`
+      : `${event.actorId}:${event.clip}`
+    const typeClass = event.type === 'cameraCut' ? 'cut-event'
+      : event.type === 'gaze' ? 'gaze-event'
+      : event.type === 'attach' ? 'attach-event'
+      : event.type === 'ik' ? 'ik-event'
+      : event.type === 'note' ? 'note-event'
+      : 'play-event'
+    marker.className = `event-marker ${typeClass}`
     marker.style.left = `${event.timeMs / ir.scene.durationMs * 100}%`
-    marker.dataset.label = event.type === 'cameraCut' ? `CUT ${event.cameraId}` : event.type === 'gaze' ? `GAZE ${event.actorId}` : `${event.actorId}:${event.clip}`
-    marker.title = `${formatTime(event.timeMs)} · ${marker.dataset.label}`
+    marker.dataset.label = label
+    marker.title = `${formatTime(event.timeMs)} · ${label}`
     elements.eventTrack.append(marker)
   }
   playhead = document.createElement('span')
@@ -152,7 +168,7 @@ const compile = async () => {
 
   setPlaying(false)
   elements.loading.hidden = false
-  setStatus('loading', '正在加载蒙皮人物与动作…')
+  setStatus('loading', '正在加载分镜代理人物与动作…')
   const loaded = await player.load(result.ir)
   if (!loaded || revision !== compileRevision) return
   activeIr = result.ir
@@ -161,13 +177,11 @@ const compile = async () => {
   elements.duration.textContent = formatTime(activeIr.scene.durationMs)
   elements.ir.textContent = JSON.stringify(activeIr, null, 2)
   const beatCount = Object.keys(activeIr.beats ?? {}).length
-  const skillCount = activeIr.workflow?.dispatches.length ?? 0
   elements.irSummary.textContent = [
     `${Object.keys(activeIr.entities).length} entities`,
     `${activeIr.tracks.length} tracks`,
     `${activeIr.events.length} events`,
-    beatCount ? `${beatCount} beats` : '',
-    skillCount ? `${skillCount} skills` : ''
+    beatCount ? `${beatCount} beats` : ''
   ].filter(Boolean).join(' · ')
   renderEventTrack(activeIr)
   seek(0)
@@ -177,7 +191,7 @@ const compile = async () => {
     compileWarnings ? `${compileWarnings} compatibility warnings` : '',
     player.assetWarnings.length ? `${player.assetWarnings.length} fallback` : ''
   ].filter(Boolean).join(' · ')
-  setStatus('ready', `骨骼动画就绪 · ${(performance.now() - started).toFixed(1)} ms${warning ? ` · ${warning}` : ''}`)
+  setStatus('ready', `动态分镜就绪 · ${(performance.now() - started).toFixed(1)} ms${warning ? ` · ${warning}` : ''}`)
   window.__SHOT_DSL_APP__.compileCount += 1
 }
 
@@ -241,15 +255,64 @@ elements.play.addEventListener('click', () => {
 })
 elements.restart.addEventListener('click', () => { setPlaying(false); seek(0) })
 elements.timeline.addEventListener('input', () => { setPlaying(false); seek(Number(elements.timeline.value)) })
-elements.export.addEventListener('click', async () => {
-  if (!activeIr) return
-  const blob = await player.exportFrame()
+
+const downloadBlob = (blob, filename) => {
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
   link.href = url
-  link.download = `${activeIr.scene.id}-${Math.round(currentTimeMs)}ms.png`
+  link.download = filename
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+elements.export.addEventListener('click', async () => {
+  if (!activeIr) return
+  const blob = await player.exportFrame()
+  downloadBlob(blob, `${activeIr.scene.id}-${Math.round(currentTimeMs)}ms.png`)
+})
+
+elements.exportVideo.addEventListener('click', async () => {
+  if (!activeIr || elements.exportVideo.disabled) return
+  setPlaying(false)
+  const restoreTime = currentTimeMs
+  const exportScene = activeIr.scene
+  const fps = exportScene.fps
+  const frameDuration = 1000 / fps
+  const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+    .find(type => MediaRecorder.isTypeSupported(type))
+  const stream = elements.canvas.captureStream(fps)
+  const track = stream.getVideoTracks()[0]
+  const recorder = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), videoBitsPerSecond: 6_000_000 })
+  const chunks = []
+  recorder.addEventListener('dataavailable', event => { if (event.data.size) chunks.push(event.data) })
+  const stopped = new Promise(resolve => recorder.addEventListener('stop', resolve, { once: true }))
+
+  elements.exportVideo.disabled = true
+  const lockedControls = [elements.input, elements.sceneExample, elements.play, elements.restart, elements.timeline, elements.export]
+  lockedControls.forEach(control => { control.disabled = true })
+  recorder.start()
+  try {
+    const frameCount = Math.ceil(exportScene.durationMs / frameDuration)
+    for (let frame = 0; frame <= frameCount; frame += 1) {
+      seek(Math.min(exportScene.durationMs, frame * frameDuration))
+      track.requestFrame?.()
+      elements.exportVideo.textContent = `${Math.min(100, Math.round(frame / frameCount * 100))}%`
+      await new Promise(resolve => setTimeout(resolve, frameDuration))
+    }
+    recorder.stop()
+    await stopped
+    downloadBlob(new Blob(chunks, { type: recorder.mimeType || 'video/webm' }), `${exportScene.id}.webm`)
+    setStatus('ready', 'WebM 视频已导出')
+  } catch (error) {
+    setStatus('error', `视频导出失败 · ${error.message}`)
+  } finally {
+    if (recorder.state !== 'inactive') recorder.stop()
+    stream.getTracks().forEach(item => item.stop())
+    seek(restoreTime)
+    lockedControls.forEach(control => { control.disabled = false })
+    elements.exportVideo.disabled = false
+    elements.exportVideo.textContent = '导出视频'
+  }
 })
 
 window.__SHOT_DSL_APP__ = {
@@ -262,18 +325,19 @@ window.__SHOT_DSL_APP__ = {
       currentTimeMs,
       sceneId: activeIr?.scene.id ?? null,
       beatCount: activeIr ? Object.keys(activeIr.beats ?? {}).length : 0,
-      workflowSkillCount: activeIr?.workflow?.dispatches.length ?? 0,
       entityCount: activeIr ? Object.keys(activeIr.entities).length : 0,
       camera: player?.activeCamera?.name ?? null,
       skinnedActors: stats.skinnedActors ?? 0,
-      humanActors: stats.humanActors ?? 0,
-      gameReadyActors: stats.gameReadyActors ?? 0,
+      storyboardActors: stats.storyboardActors ?? 0,
       renderStyle: stats.renderStyle ?? null,
       characterModels: stats.characterModels ?? [],
       characterMetrics: stats.characterMetrics ?? [],
       characterSamples: stats.characterSamples ?? [],
       activeCameraFrame: stats.activeCameraFrame ?? null,
       activeGazes: stats.activeGazes ?? [],
+      activeAttachments: stats.activeAttachments ?? [],
+      activeIKConstraints: stats.activeIKConstraints ?? [],
+      activeNotes: stats.activeNotes ?? [],
       fallbackActors: stats.fallbackActors ?? 0
     }
   }
@@ -282,6 +346,8 @@ window.__SHOT_DSL_APP__ = {
 const initialize = async () => {
   try {
     player = new ShotPlayer(elements.canvas)
+    elements.exportVideo.disabled = !(window.MediaRecorder && elements.canvas.captureStream)
+    if (elements.exportVideo.disabled) elements.exportVideo.title = '当前浏览器不支持 WebM 导出'
     player.onCameraChange = cameraName => { elements.shotLabel.textContent = `CAM ${cameraName.toUpperCase()}` }
     await populateExamples()
     await selectExample(examples[0])
